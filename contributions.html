@@ -428,8 +428,8 @@
                 </div>
                 
                 <div class="info-text">
-                    <strong>Note:</strong> Per-hour rates are calculated server-side and are consistent across all users/devices. 
-                    Rates are calculated from per-minute rates (change per minute × 60) based on the difference between current and previous contribution totals divided by time elapsed in minutes. 
+                    <strong>Note:</strong> Per-hour rates are calculated from per-minute rates (change per minute × 60). 
+                    Rates are based on the difference between current and previous contribution totals divided by time elapsed in minutes. 
                     Rates are smoothed using exponential moving average (EMA) to reduce volatility from short time intervals and bursty activity patterns. 
                     Short intervals (< 5 min) use stronger smoothing for stability, while longer intervals use lighter smoothing for faster response. 
                     On first load, rates will show "---" until we have at least 2 data points. 
@@ -482,9 +482,15 @@
         let contributionHistory = {};
         let currentGuildFunds = {};
         let previousGuildFunds = {};
+        let lastPerHourRates = {};
         let currentSort = { type: 'name', direction: 'asc', resourceId: null };
         let allResourceIds = [];
         let autoRefreshInterval = null;
+        let clientHistory = {
+            guildFunds: {},
+            members: {}
+        };
+        let lastFetchTimestamp = null;
         let collectivePerHourTotals = {};
         let guildShardEvents = [];
         let memberShardEvents = {};
@@ -532,6 +538,54 @@
             if (absNum >= 0.01) return formatWithDigits(num, 3);
             if (absNum === 0) return '0';
             return formatWithDigits(num, 4);
+        }
+        
+        function calculatePerMinute(currentValue, previousValue, minutesElapsed, hasHistory = true) {
+            // Don't calculate if we don't have valid history (first load)
+            if (!hasHistory || minutesElapsed <= 0) return null;
+            
+            // Calculate the actual change (positive values are deposits, negative are withdrawals)
+            const diff = currentValue - previousValue;
+            return diff / minutesElapsed;
+        }
+        
+        function calculatePerHourFromPerMinute(perMinute) {
+            if (perMinute === null) return null;
+            return perMinute * 60;
+        }
+        
+        // Smooth per-hour rates using exponential moving average (EMA)
+        // Alpha controls smoothing: lower = more smooth (slower response), higher = less smooth (faster response)
+        // Use adaptive alpha based on time window to handle short intervals better
+        function smoothPerHourRate(newRate, previousRate, minutesElapsed) {
+            if (newRate === null || newRate === undefined || Number.isNaN(newRate)) {
+                return previousRate;
+            }
+            
+            if (previousRate === null || previousRate === undefined || Number.isNaN(previousRate)) {
+                return newRate;
+            }
+            
+            // Adaptive alpha: use lower weight for very short intervals to reduce volatility
+            // For intervals < 5 minutes, use stronger smoothing (lower alpha)
+            // For longer intervals, use less smoothing (higher alpha) to respond faster
+            let alpha;
+            if (minutesElapsed < 5) {
+                // Very short intervals: strong smoothing (alpha = 0.15)
+                alpha = 0.15;
+            } else if (minutesElapsed < 15) {
+                // Short intervals: moderate smoothing (alpha = 0.25)
+                alpha = 0.25;
+            } else if (minutesElapsed < 60) {
+                // Medium intervals: light smoothing (alpha = 0.4)
+                alpha = 0.4;
+            } else {
+                // Long intervals: minimal smoothing (alpha = 0.6) to respond quickly
+                alpha = 0.6;
+            }
+            
+            // Exponential moving average: new_smooth = alpha * new + (1 - alpha) * previous
+            return alpha * newRate + (1 - alpha) * previousRate;
         }
         
         function normalizeShardEvents(events, nowMs = Date.now()) {
@@ -651,9 +705,105 @@
             return memberShardEvents[key] || [];
         }
 
+        function getClientRate(type, identifier, resourceId, currentValue, timestamp) {
+            const effectiveTimestamp = Number.isFinite(timestamp) ? timestamp : Date.now();
+            let container;
+
+            if (type === 'guild') {
+                container = clientHistory.guildFunds;
+            } else {
+                const memberKey = String(identifier);
+                if (!clientHistory.members[memberKey]) {
+                    clientHistory.members[memberKey] = {};
+                }
+                container = clientHistory.members[memberKey];
+            }
+
+            const entry = container[resourceId];
+            if (entry && entry.timestamp === effectiveTimestamp) {
+                return {
+                    perMinute: entry.lastPerMinute ?? null,
+                    diff: 0,
+                    hadHistory: true
+                };
+            }
+
+            let perMinute = null;
+            let diff = 0;
+
+            if (entry && entry.timestamp && effectiveTimestamp > entry.timestamp) {
+                const elapsedMinutes = (effectiveTimestamp - entry.timestamp) / (1000 * 60);
+                if (elapsedMinutes > 0) {
+                    diff = currentValue - entry.value;
+                    perMinute = diff / elapsedMinutes;
+                }
+            }
+
+            container[resourceId] = {
+                value: currentValue,
+                timestamp: effectiveTimestamp,
+                lastPerMinute: perMinute !== null ? perMinute : (entry ? entry.lastPerMinute ?? null : null)
+            };
+
+            return {
+                perMinute,
+                diff,
+                hadHistory: !!entry
+            };
+        }
+
+        function updateClientLastPerMinute(type, identifier, resourceId, perMinute) {
+            if (perMinute === null || perMinute === undefined) {
+                return;
+            }
+
+            let container;
+            if (type === 'guild') {
+                container = clientHistory.guildFunds;
+            } else {
+                const memberKey = String(identifier);
+                if (!clientHistory.members[memberKey]) {
+                    clientHistory.members[memberKey] = {};
+                }
+                container = clientHistory.members[memberKey];
+            }
+
+            if (!container[resourceId]) {
+                container[resourceId] = {
+                    value: 0,
+                    timestamp: Number.isFinite(lastFetchTimestamp) ? lastFetchTimestamp : Date.now(),
+                    lastPerMinute: perMinute
+                };
+            } else {
+                container[resourceId].lastPerMinute = perMinute;
+            }
+        }
+
+        function cleanupClientHistory() {
+            const activeMemberIds = new Set(Object.keys(currentMembers || {}).map(id => String(id)));
+
+            Object.keys(clientHistory.members).forEach(memberId => {
+                if (!activeMemberIds.has(memberId)) {
+                    delete clientHistory.members[memberId];
+                }
+            });
+
+            Object.keys(lastPerHourRates).forEach(memberId => {
+                if (!activeMemberIds.has(memberId)) {
+                    delete lastPerHourRates[memberId];
+                }
+            });
+        }
+
         function resetClientHistoryCaches() {
+            clientHistory = {
+                guildFunds: {},
+                members: {}
+            };
+            lastPerHourRates = {};
             contributionHistory = {};
             previousGuildFunds = {};
+            lastFetchTimestamp = null;
             collectivePerHourTotals = {};
             guildShardEvents = [];
             memberShardEvents = {};
@@ -689,6 +839,7 @@
             currentGuildFunds = data.Funds || {};
             previousGuildFunds = contributionHistory.guild_funds || {};
             applyShardHistoryFromContribution(contributionHistory);
+            cleanupClientHistory();
             
             // Define resource display order: Mana Dust, Elemental Shards, Guild XP, Wood, Iron, Fish
             const RESOURCE_ORDER = [1, 2, 42, 8, 9, 7];
@@ -933,6 +1084,7 @@
                 currentGuildFunds = data.Funds || {};
                 previousGuildFunds = contributionHistory.guild_funds || {};
                 applyShardHistoryFromContribution(contributionHistory);
+                cleanupClientHistory();
                 
                 // Check if data actually changed
                 const dataChanged = hasDataChanged(data.Members, data.contribution_history || {});
@@ -1104,14 +1256,10 @@
             const renderNowMs = Date.now();
             const allMembers = Object.values(currentMembers);
 
-            // Get smoothed rates from server
-            const smoothedRates = contributionHistory.smoothed_rates || {};
-
             const allMemberStats = allMembers.map(member => {
+                const minutesElapsed = getMinutesElapsed(member.ID);
                 const resourceStats = {};
                 const nowMs = renderNowMs;
-                const memberIdStr = String(member.ID);
-                const memberSmoothedRates = smoothedRates[memberIdStr] || {};
                 
                 allResourceIds.forEach(resourceId => {
                     const resourceIdStr = String(resourceId);
@@ -1149,11 +1297,50 @@
                         return;
                     }
 
-                    // Use server-provided smoothed rate
-                    const serverSmoothedRate = memberSmoothedRates[resourceIdStr];
-                    const displayPerHour = (serverSmoothedRate !== undefined && serverSmoothedRate !== null && !Number.isNaN(serverSmoothedRate))
-                        ? serverSmoothedRate
-                        : null;
+                    const previousHistory = contributionHistory[member.ID];
+                    const previousValue = (previousHistory && previousHistory.Contributions && previousHistory.Contributions[resourceIdStr]) || 0;
+                    const hasHistory = !!previousHistory && !!previousHistory.last_update;
+                    const hadResourcePreviously = !!previousHistory
+                        && !!previousHistory.Contributions
+                        && Object.prototype.hasOwnProperty.call(previousHistory.Contributions, resourceIdStr);
+
+                    let perMinute = null;
+                    if (hasHistory && hadResourcePreviously) {
+                        perMinute = calculatePerMinute(currentValue, previousValue, minutesElapsed, true);
+                    }
+
+                    const perHour = calculatePerHourFromPerMinute(perMinute);
+                    updateClientLastPerMinute('member', member.ID, resourceIdStr, perMinute);
+
+                    if (!lastPerHourRates[member.ID]) {
+                        lastPerHourRates[member.ID] = {};
+                    }
+
+                    const memberRateCache = lastPerHourRates[member.ID];
+                    let displayPerHour = perHour;
+
+                    if (perHour === null || perHour === undefined || Number.isNaN(perHour)) {
+                        displayPerHour = null;
+                    } else if (perMinute !== null) {
+                        const previousCachedRate = memberRateCache[resourceIdStr];
+                        
+                        // If calculated rate is 0 but we have a cached non-zero rate, preserve the cache
+                        if (perHour === 0 && previousCachedRate !== undefined && previousCachedRate !== 0 && !Number.isNaN(previousCachedRate)) {
+                            displayPerHour = previousCachedRate;
+                        } else {
+                            // Apply exponential moving average smoothing to reduce volatility
+                            if (previousCachedRate !== undefined && previousCachedRate !== null && !Number.isNaN(previousCachedRate)) {
+                                displayPerHour = smoothPerHourRate(perHour, previousCachedRate, minutesElapsed);
+                            } else {
+                                // First calculation - use the raw rate
+                                displayPerHour = perHour;
+                            }
+                            // Update cache with smoothed rate
+                            memberRateCache[resourceIdStr] = displayPerHour;
+                        }
+                    } else if (memberRateCache[resourceIdStr] !== undefined) {
+                        displayPerHour = memberRateCache[resourceIdStr];
+                    }
 
                     if (displayPerHour !== null && displayPerHour !== undefined && !Number.isNaN(displayPerHour)) {
                         collectivePerHourTotals[resourceIdStr] = (collectivePerHourTotals[resourceIdStr] || 0) + displayPerHour;
@@ -1161,9 +1348,9 @@
 
                     resourceStats[resourceIdStr] = {
                         currentValue,
-                        perHour: displayPerHour,
-                        displayPerHour: displayPerHour,
-                        rateText: displayPerHour === null
+                        perHour,
+                        displayPerHour,
+                        rateText: perHour === null
                             ? '--- (no history)'
                             : formatNumber(displayPerHour ?? 0, showFullValues) + '/hr',
                         extraText: ''
@@ -1257,6 +1444,41 @@
             renderCollectiveStats();
         }
 
+        function getMinutesElapsed(memberId = null) {
+            // Try to get last update time from history
+            const defaultMinutes = 60; // Default to 1 hour = 60 minutes if no history
+            
+            if (memberId && contributionHistory[memberId] && contributionHistory[memberId].last_update) {
+                const previousTime = new Date(contributionHistory[memberId].last_update);
+                const now = new Date();
+                const diffMs = now - previousTime;
+                const diffMinutes = diffMs / (1000 * 60);
+                return Math.max(diffMinutes, 0.1); // At least 0.1 minutes to avoid division by zero
+            }
+            
+            // Try to get a general last update time
+            if (Object.keys(contributionHistory).length > 0) {
+                let mostRecent = null;
+                for (const [id, history] of Object.entries(contributionHistory)) {
+                    if (history.last_update) {
+                        const time = new Date(history.last_update);
+                        if (!mostRecent || time > mostRecent) {
+                            mostRecent = time;
+                        }
+                    }
+                }
+                
+                if (mostRecent) {
+                    const now = new Date();
+                    const diffMs = now - mostRecent;
+                    const diffMinutes = diffMs / (1000 * 60);
+                    return Math.max(diffMinutes, 0.1);
+                }
+            }
+            
+            return defaultMinutes;
+        }
+        
         function setupExport(guildName) {
             const exportHtmlBtn = document.getElementById('export-html-btn');
             const exportPdfBtn = document.getElementById('export-pdf-btn');
@@ -1343,13 +1565,11 @@
             
             // Generate individual stats HTML
             const membersArray = Object.values(currentMembers).sort((a, b) => a.Name.localeCompare(b.Name));
-            const exportSmoothedRates = contributionHistory.smoothed_rates || {};
             let tableRows = '';
             
             membersArray.forEach(member => {
+                const minutesElapsed = getMinutesElapsed(member.ID);
                 const memberNowMs = exportNowMs;
-                const memberIdStr = String(member.ID);
-                const memberSmoothedRates = exportSmoothedRates[memberIdStr] || {};
                 let rowHTML = `<tr><td class="member-name">${member.Name}</td>`;
                 
                 allResourceIds.forEach(resourceId => {
@@ -1380,17 +1600,17 @@
                             </td>
                         `;
                     } else {
-                        // Use server-provided smoothed rate
-                        const serverSmoothedRate = memberSmoothedRates[resourceIdStr];
-                        const displayPerHour = (serverSmoothedRate !== undefined && serverSmoothedRate !== null && !Number.isNaN(serverSmoothedRate))
-                            ? serverSmoothedRate
-                            : null;
+                        const previousHistory = contributionHistory[member.ID];
+                        const previousValue = (previousHistory && previousHistory.Contributions && previousHistory.Contributions[resourceIdStr]) || 0;
+                        const hasHistory = !!previousHistory && !!previousHistory.last_update;
+                        const perMinute = calculatePerMinute(currentValue, previousValue, minutesElapsed, hasHistory);
+                        const perHour = calculatePerHourFromPerMinute(perMinute);
                         
                         rowHTML += `
                             <td class="resource-value">
                                 ${formatNumber(Math.abs(currentValue), showFullValues)}
                                 <br>
-                                <span class="per-hour">${displayPerHour !== null ? formatNumber(displayPerHour, showFullValues) + '/hr' : '--- (no history)'}</span>
+                                <span class="per-hour">${perHour !== null ? formatNumber(perHour, showFullValues) + '/hr' : '--- (no history)'}</span>
                             </td>
                         `;
                     }

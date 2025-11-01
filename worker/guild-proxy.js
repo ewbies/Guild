@@ -83,26 +83,10 @@ export default {
 
         const previousHistory = await loadHistory(env);
         const potionHistory = buildPotionHistory(previousHistory, data);
-        
-        // Apply updates first (this calculates rates), then build contribution history with the updated rates
+        const contributionHistory = buildContributionHistory(previousHistory, data);
+
         const updatedHistory = applyUpdates(previousHistory, data, nowIso);
-        console.log(`[DEBUG] Updated history smoothed_rates keys:`, Object.keys(updatedHistory.smoothed_rates || {}));
-        const contributionHistory = buildContributionHistory(updatedHistory, data);
-        console.log(`[DEBUG] Contribution history smoothed_rates keys:`, Object.keys(contributionHistory.smoothed_rates || {}));
-        
-        // Only save history if data has actually changed (to reduce KV writes and avoid hitting limits)
-        // Check if members or guild funds have changed
-        const dataChanged = hasDataChanged(previousHistory, data);
-        if (dataChanged) {
-          console.log(`[DEBUG] Data changed, saving history`);
-          // Try to save history, but don't fail if KV limit is exceeded
-          ctx.waitUntil(saveHistory(env, updatedHistory).catch(error => {
-            console.error(`[ERROR] Failed to save history:`, error.message);
-            // Don't throw - allow the request to complete even if save fails
-          }));
-        } else {
-          console.log(`[DEBUG] No data changes, skipping KV save`);
-        }
+        ctx.waitUntil(saveHistory(env, updatedHistory));
 
         data.potion_history = potionHistory;
         data.contribution_history = contributionHistory;
@@ -169,14 +153,7 @@ async function saveHistory(env, history) {
     return;
   }
 
-  try {
-    await env.GUILD_HISTORY.put(HISTORY_KV_KEY, JSON.stringify(history));
-    console.log(`[DEBUG] History saved successfully`);
-  } catch (error) {
-    // Log but don't throw - KV limits might be exceeded
-    console.error(`[ERROR] KV save failed:`, error.message);
-    throw error; // Re-throw so caller can handle
-  }
+  await env.GUILD_HISTORY.put(HISTORY_KV_KEY, JSON.stringify(history));
 }
 
 function createEmptyHistory() {
@@ -186,8 +163,7 @@ function createEmptyHistory() {
     guild_funds: {},
     guild_funds_timestamp: null,
     member_shard_events: {},
-    guild_shard_events: [],
-    smoothed_rates: {} // Store smoothed per-hour rates per member per resource
+    guild_shard_events: []
   };
 }
 
@@ -229,11 +205,6 @@ function buildContributionHistory(history, currentData) {
     result.member_shard_events = clone(history.member_shard_events);
   }
 
-  // Include smoothed rates in response
-  if (history.smoothed_rates) {
-    result.smoothed_rates = clone(history.smoothed_rates);
-  }
-
   if (!history.members || !currentData?.Members) {
     return result;
   }
@@ -254,8 +225,6 @@ function buildContributionHistory(history, currentData) {
 function applyUpdates(previousHistory, currentData, nowIso) {
   const history = deepCloneHistory(previousHistory);
   updatePotionHistory(history, currentData, nowIso);
-  // Calculate rates BEFORE updating contributions, so we have the old values to compare against
-  calculateAndStoreRates(history, currentData, nowIso);
   updateContributionHistory(history, currentData, nowIso);
   history.last_update = nowIso;
   return history;
@@ -389,50 +358,10 @@ function updateContributionHistory(history, currentData, nowIso) {
     }
 
     entry.Contributions = currentContributions;
-    // Always update last_update so rate calculations have accurate time, even if contributions didn't change
-    // This ensures we can calculate correct rates based on time elapsed
-    entry.last_update = nowIso;
-  }
-}
-
-function hasDataChanged(previousHistory, currentData) {
-  // Check if any member contributions changed
-  if (!previousHistory?.members || !currentData?.Members) {
-    return true; // New data, consider it changed
-  }
-  
-  for (const [memberId, member] of Object.entries(currentData.Members)) {
-    const memberIdStr = String(memberId);
-    const prevMember = previousHistory.members[memberIdStr];
-    
-    if (!prevMember) {
-      return true; // New member
-    }
-    
-    const prevContributions = prevMember.Contributions || {};
-    const currContributions = member.Contributions || {};
-    
-    // Check if any contribution values changed
-    const allResourceIds = new Set([
-      ...Object.keys(prevContributions),
-      ...Object.keys(currContributions)
-    ]);
-    
-    for (const resourceId of allResourceIds) {
-      const prevValue = getNumber(prevContributions[resourceId]);
-      const currValue = getNumber(currContributions[resourceId]);
-      if (Math.abs(currValue - prevValue) > 0.01) {
-        return true; // Contribution changed
-      }
+    if (contributionsChanged) {
+      entry.last_update = nowIso;
     }
   }
-  
-  // Check if guild funds changed
-  if (hasFundsChanged(previousHistory.guild_funds, currentData.Funds)) {
-    return true;
-  }
-  
-  return false; // No changes detected
 }
 
 function hasFundsChanged(previousFunds, currentFunds) {
@@ -493,165 +422,5 @@ function deepCloneHistory(history) {
   }
 
   return JSON.parse(JSON.stringify(history));
-}
-
-// Calculate per-minute rate from contribution change
-function calculatePerMinute(currentValue, previousValue, minutesElapsed) {
-  if (minutesElapsed <= 0) return null;
-  const diff = currentValue - previousValue;
-  return diff / minutesElapsed;
-}
-
-// Convert per-minute to per-hour
-function calculatePerHourFromPerMinute(perMinute) {
-  if (perMinute === null) return null;
-  return perMinute * 60;
-}
-
-// Smooth per-hour rates using exponential moving average (EMA)
-// Alpha controls smoothing: lower = more smooth (slower response), higher = less smooth (faster response)
-// Use adaptive alpha based on time window to handle short intervals better
-function smoothPerHourRate(newRate, previousRate, minutesElapsed) {
-  if (newRate === null || newRate === undefined || Number.isNaN(newRate)) {
-    return previousRate;
-  }
-  
-  if (previousRate === null || previousRate === undefined || Number.isNaN(previousRate)) {
-    return newRate;
-  }
-  
-  // Adaptive alpha: use lower weight for very short intervals to reduce volatility
-  // For intervals < 5 minutes, use stronger smoothing (lower alpha)
-  // For longer intervals, use less smoothing (higher alpha) to respond faster
-  let alpha;
-  if (minutesElapsed < 5) {
-    // Very short intervals: strong smoothing (alpha = 0.15)
-    alpha = 0.15;
-  } else if (minutesElapsed < 15) {
-    // Short intervals: moderate smoothing (alpha = 0.25)
-    alpha = 0.25;
-  } else if (minutesElapsed < 60) {
-    // Medium intervals: light smoothing (alpha = 0.4)
-    alpha = 0.4;
-  } else {
-    // Long intervals: minimal smoothing (alpha = 0.6) to respond quickly
-    alpha = 0.6;
-  }
-  
-  // Exponential moving average: new_smooth = alpha * new + (1 - alpha) * previous
-  return alpha * newRate + (1 - alpha) * previousRate;
-}
-
-// Calculate and store smoothed rates for all members and resources
-function calculateAndStoreRates(history, currentData, nowIso) {
-  if (!currentData?.Members) {
-    return;
-  }
-  
-  // Initialize members if it doesn't exist (shouldn't happen, but be safe)
-  if (!history.members) {
-    history.members = {};
-  }
-
-  const smoothedRates = (history.smoothed_rates = history.smoothed_rates || {});
-  const now = new Date(nowIso);
-
-  for (const [memberId, member] of Object.entries(currentData.Members)) {
-    const memberIdStr = String(memberId);
-    const historyMember = history.members[memberIdStr];
-    
-    if (!historyMember || !historyMember.last_update) {
-      // No history, can't calculate rates yet (expected on first request after reset)
-      console.log(`[DEBUG] Member ${memberIdStr}: No history or last_update`);
-      continue;
-    }
-
-    const previousTime = new Date(historyMember.last_update);
-    // Check if date parsing succeeded
-    if (isNaN(previousTime.getTime())) {
-      console.log(`[DEBUG] Member ${memberIdStr}: Invalid last_update date`);
-      continue;
-    }
-    
-    const diffMs = now.getTime() - previousTime.getTime();
-    const minutesElapsed = diffMs / (1000 * 60);
-    
-    console.log(`[DEBUG] Member ${memberIdStr}: minutesElapsed=${minutesElapsed}, last_update=${historyMember.last_update}`);
-    
-    // Need at least some time elapsed (even a few seconds is fine for calculation)
-    // Allow very small intervals (like a few seconds) for rate calculation
-    if (minutesElapsed <= 0 || !Number.isFinite(minutesElapsed)) {
-      console.log(`[DEBUG] Member ${memberIdStr}: Skipping - invalid minutesElapsed`);
-      continue;
-    }
-
-    const currentContributions = member.Contributions || {};
-    const previousContributions = historyMember.Contributions || {};
-    
-    // Ensure member entry exists in smoothed_rates
-    if (!smoothedRates[memberIdStr]) {
-      smoothedRates[memberIdStr] = {};
-    }
-    
-    const memberRates = smoothedRates[memberIdStr];
-    
-    // Calculate rates for all resources that exist in either current or previous
-    const allResourceIds = new Set([
-      ...Object.keys(currentContributions),
-      ...Object.keys(previousContributions)
-    ]);
-    
-    for (const resourceId of allResourceIds) {
-      // Skip shards - they're handled separately with rolling windows
-      if (resourceId === SHARD_RESOURCE_ID) {
-        continue;
-      }
-      
-      const currentValue = getNumber(currentContributions[resourceId]);
-      const previousValue = getNumber(previousContributions[resourceId]);
-      
-      // Only calculate if we have a previous value (established baseline)
-      // Need to check if the resource existed in previous contributions, not just if value is 0
-      const hadPreviousResource = Object.prototype.hasOwnProperty.call(previousContributions, resourceId);
-      
-      // Get cached rate once at the start so it's available in all code paths
-      const previousCachedRate = memberRates[resourceId];
-      
-      if (hadPreviousResource) {
-        const perMinute = calculatePerMinute(currentValue, previousValue, minutesElapsed);
-        const perHour = calculatePerHourFromPerMinute(perMinute);
-        
-        console.log(`[DEBUG] Member ${memberIdStr}, Resource ${resourceId}: current=${currentValue}, previous=${previousValue}, perHour=${perHour}`);
-        
-        // Always store a rate if we can calculate one (even if 0), so we have data to show
-        if (perHour !== null && !Number.isNaN(perHour)) {
-          // If calculated rate is 0 but we have a cached non-zero rate, preserve the cache
-          if (perHour === 0 && previousCachedRate !== undefined && previousCachedRate !== 0 && !Number.isNaN(previousCachedRate)) {
-            memberRates[resourceId] = previousCachedRate;
-          } else {
-            // Apply exponential moving average smoothing
-            if (previousCachedRate !== undefined && previousCachedRate !== null && !Number.isNaN(previousCachedRate)) {
-              memberRates[resourceId] = smoothPerHourRate(perHour, previousCachedRate, minutesElapsed);
-            } else {
-              // First calculation - use the raw rate (even if 0, so we track that there's no change)
-              // Store 0 as a valid rate if there's truly no change, so it shows 0/hr instead of "no history"
-              memberRates[resourceId] = perHour;
-            }
-          }
-        } else if (previousCachedRate !== undefined) {
-          // Preserve cached rate if calculation failed
-          memberRates[resourceId] = previousCachedRate;
-        }
-        // If perHour is null/NaN and no cache exists, leave it undefined (will show "no history")
-      } else if (Object.prototype.hasOwnProperty.call(currentContributions, resourceId)) {
-        // Resource exists in current but not previous - this happens on first time seeing this resource
-        // Don't calculate a rate yet, wait for next update to establish baseline
-        // But preserve cached rate if it exists
-        if (previousCachedRate !== undefined) {
-          memberRates[resourceId] = previousCachedRate;
-        }
-      }
-    }
-  }
 }
 
