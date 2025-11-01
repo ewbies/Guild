@@ -86,7 +86,10 @@ export default {
         const contributionHistory = buildContributionHistory(previousHistory, data);
 
         const updatedHistory = applyUpdates(previousHistory, data, nowIso);
-        ctx.waitUntil(saveHistory(env, updatedHistory));
+        // Only save if data actually changed to reduce KV writes
+        if (hasHistoryChanged(previousHistory, updatedHistory)) {
+          ctx.waitUntil(saveHistory(env, updatedHistory));
+        }
 
         data.potion_history = potionHistory;
         data.contribution_history = contributionHistory;
@@ -422,5 +425,25 @@ function deepCloneHistory(history) {
   }
 
   return JSON.parse(JSON.stringify(history));
+}
+
+function hasHistoryChanged(previous, updated) {
+  if (!previous || !updated) {
+    return true;
+  }
+
+  // Compare member counts
+  const prevMemberCount = Object.keys(previous.members || {}).length;
+  const updatedMemberCount = Object.keys(updated.members || {}).length;
+  if (prevMemberCount !== updatedMemberCount) {
+    return true;
+  }
+
+  // Create copies without last_update for comparison (since it always changes)
+  const prevCompare = { ...previous, last_update: null };
+  const updatedCompare = { ...updated, last_update: null };
+  
+  // Quick JSON comparison (most reliable)
+  return JSON.stringify(prevCompare) !== JSON.stringify(updatedCompare);
 }
 
