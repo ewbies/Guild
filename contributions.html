@@ -1181,11 +1181,18 @@
                         : `Range: ${minText} - ${maxText}`;
                 }
                 // Only show rate if we have actual history from server
-                // If hasActualHistoryForResource is false, it means NO members have history, so show "no history yet"
-                // If it's true, we have real history (even if aggregate is 0, which means legitimate zero rates)
-                const perHourText = hasActualHistoryForResource && hasAggregate
-                    ? `${formatNumber(aggregatePerHour, showFullValues)}/hour${isShard ? ` (last ${SHARD_RATE_WINDOW_HOURS}h)` : ''}`
-                    : (isShard ? '--- (no shard drops yet)' : '--- (no history yet)');
+                // CRITICAL: If hasActualHistoryForResource is false, we MUST show "no history yet"
+                // This prevents any stale or cached aggregate values from being displayed
+                let perHourText;
+                if (!hasActualHistoryForResource) {
+                    perHourText = isShard ? '--- (no shard drops yet)' : '--- (no history yet)';
+                } else if (hasAggregate) {
+                    // We have actual history and a valid aggregate - show the rate (even if 0)
+                    perHourText = `${formatNumber(aggregatePerHour, showFullValues)}/hour${isShard ? ` (last ${SHARD_RATE_WINDOW_HOURS}h)` : ''}`;
+                } else {
+                    // Has history but no aggregate yet (shouldn't happen, but be safe)
+                    perHourText = isShard ? '--- (no shard drops yet)' : '--- (no history yet)';
+                }
                 
                 const card = document.createElement('div');
                 card.className = 'stat-card';
