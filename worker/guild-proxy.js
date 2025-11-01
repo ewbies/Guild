@@ -231,8 +231,9 @@ function buildContributionHistory(history, currentData) {
 function applyUpdates(previousHistory, currentData, nowIso) {
   const history = deepCloneHistory(previousHistory);
   updatePotionHistory(history, currentData, nowIso);
-  updateContributionHistory(history, currentData, nowIso);
+  // Calculate rates BEFORE updating contributions, so we have the old values to compare against
   calculateAndStoreRates(history, currentData, nowIso);
+  updateContributionHistory(history, currentData, nowIso);
   history.last_update = nowIso;
   return history;
 }
@@ -365,9 +366,9 @@ function updateContributionHistory(history, currentData, nowIso) {
     }
 
     entry.Contributions = currentContributions;
-    if (contributionsChanged) {
-      entry.last_update = nowIso;
-    }
+    // Always update last_update so rate calculations have accurate time, even if contributions didn't change
+    // This ensures we can calculate correct rates based on time elapsed
+    entry.last_update = nowIso;
   }
 }
 
@@ -530,7 +531,10 @@ function calculateAndStoreRates(history, currentData, nowIso) {
       const previousValue = getNumber(previousContributions[resourceId]);
       
       // Only calculate if we have a previous value (established baseline)
-      if (previousValue !== undefined && Object.prototype.hasOwnProperty.call(previousContributions, resourceId)) {
+      // Need to check if the resource existed in previous contributions, not just if value is 0
+      const hadPreviousResource = Object.prototype.hasOwnProperty.call(previousContributions, resourceId);
+      
+      if (hadPreviousResource) {
         const perMinute = calculatePerMinute(currentValue, previousValue, minutesElapsed);
         const perHour = calculatePerHourFromPerMinute(perMinute);
         
@@ -545,13 +549,16 @@ function calculateAndStoreRates(history, currentData, nowIso) {
             if (previousCachedRate !== undefined && previousCachedRate !== null && !Number.isNaN(previousCachedRate)) {
               memberRates[resourceId] = smoothPerHourRate(perHour, previousCachedRate, minutesElapsed);
             } else {
-              // First calculation - use the raw rate
+              // First calculation - use the raw rate (even if 0, so we track that there's no change)
               memberRates[resourceId] = perHour;
             }
           }
         } else if (previousCachedRate !== undefined) {
           // Preserve cached rate if calculation failed
           memberRates[resourceId] = previousCachedRate;
+        } else {
+          // No calculation possible and no cache - this is expected on first run
+          // Don't set anything, will be null/undefined
         }
       }
     }
