@@ -83,9 +83,11 @@ export default {
 
         const previousHistory = await loadHistory(env);
         const potionHistory = buildPotionHistory(previousHistory, data);
-        const contributionHistory = buildContributionHistory(previousHistory, data);
-
+        
+        // Apply updates first (this calculates rates), then build contribution history with the updated rates
         const updatedHistory = applyUpdates(previousHistory, data, nowIso);
+        const contributionHistory = buildContributionHistory(updatedHistory, data);
+        
         ctx.waitUntil(saveHistory(env, updatedHistory));
 
         data.potion_history = potionHistory;
@@ -550,15 +552,22 @@ function calculateAndStoreRates(history, currentData, nowIso) {
               memberRates[resourceId] = smoothPerHourRate(perHour, previousCachedRate, minutesElapsed);
             } else {
               // First calculation - use the raw rate (even if 0, so we track that there's no change)
+              // Store 0 as a valid rate if there's truly no change, so it shows 0/hr instead of "no history"
               memberRates[resourceId] = perHour;
             }
           }
         } else if (previousCachedRate !== undefined) {
           // Preserve cached rate if calculation failed
           memberRates[resourceId] = previousCachedRate;
-        } else {
-          // No calculation possible and no cache - this is expected on first run
-          // Don't set anything, will be null/undefined
+        }
+        // If perHour is null/NaN and no cache exists, leave it undefined (will show "no history")
+      } else if (currentValue > 0) {
+        // Resource exists in current but not previous - this happens on first time seeing this resource
+        // Don't calculate a rate yet, wait for next update to establish baseline
+        // But if there's a cached rate, preserve it
+        const previousCachedRate = memberRates[resourceId];
+        if (previousCachedRate !== undefined) {
+          memberRates[resourceId] = previousCachedRate;
         }
       }
     }
