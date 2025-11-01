@@ -435,7 +435,6 @@
                     On first load, rates will show "---" until we have at least 2 data points. 
                     If no change is detected on refresh, the last calculated rate is preserved to avoid showing 0/hr. 
                     Auto-refresh updates the page every 15 seconds to show the latest contribution data. 
-                    History tracking is client-side only (not shared across sessions or users). 
                     Elemental shard rates use a rolling 6-hour window based on individual drop events (not total values). 
                     Shard rates have a minimum 1-hour duration to prevent inflated rates from short activity bursts. 
                     Collective shard rates sum all individual member rates, not guild fund changes.
@@ -499,10 +498,10 @@
         const refreshIntervalMs = 15000;
 
         const GUILD_ID = 4;
-        const API_KEY = '5ab36da0-b83b-4362-8cd8-bc5a40b6d939';
+        const API_BASE_URL = 'https://ewbies-guild-api.widers.workers.dev';
 
         function buildGuildApiUrl(guildId) {
-            return `https://api.manarion.com/guilds/${guildId}?apikey=${API_KEY}`;
+            return `${API_BASE_URL}/api/guild/${guildId}`;
         }
         
         function trimTrailingZeros(str) {
@@ -834,14 +833,12 @@
                 throw new Error('No members found in guild data');
             }
             
-            // Contribution history not available with direct API calls
-            contributionHistory = {};
+            // Get contribution history and guild funds
+            contributionHistory = data.contribution_history || {};
             currentMembers = data.Members;
             currentGuildFunds = data.Funds || {};
-            previousGuildFunds = {};
-            // Initialize empty shard history
-            guildShardEvents = [];
-            memberShardEvents = {};
+            previousGuildFunds = contributionHistory.guild_funds || {};
+            applyShardHistoryFromContribution(contributionHistory);
             cleanupClientHistory();
             
             // Define resource display order: Mana Dust, Elemental Shards, Guild XP, Wood, Iron, Fish
@@ -956,11 +953,16 @@
         function setupResetData() {
             const resetBtn = document.getElementById('reset-data-btn');
             if (!resetBtn) return;
-            resetBtn.title = 'Clears the client-side history cache (local only).';
+            resetBtn.title = 'Clears the shared guild history stored by the worker.';
 
             resetBtn.addEventListener('click', async () => {
-                const confirm = window.confirm('Resetting will clear local client-side history so rates recalculate from scratch on the next refresh. Continue?');
-                if (!confirm) {
+                const firstConfirm = window.confirm('Resetting will clear stored history so rates recalculate from scratch on the next refresh. Continue?');
+                if (!firstConfirm) {
+                    return;
+                }
+
+                const secondConfirm = window.confirm('This affects everyone viewing the dashboard. Click OK again to reset, or Cancel to keep the current history.');
+                if (!secondConfirm) {
                     return;
                 }
 
@@ -969,8 +971,14 @@
                 resetBtn.textContent = 'Resetting...';
 
                 try {
-                    // Direct API doesn't support reset history endpoint
-                    // Just reset client-side caches
+                    const response = await fetch(`${API_BASE_URL}/api/reset-history`, {
+                        method: 'POST'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to reset data on the server');
+                    }
+
                     resetClientHistoryCaches();
 
                     const errorEl = document.getElementById('error');
@@ -1070,15 +1078,16 @@
                     throw new Error('No members found in guild data');
                 }
                 
-                // Contribution history not available with direct API calls
-                contributionHistory = {};
+                // Get contribution history and guild funds
+                contributionHistory = data.contribution_history || {};
                 currentMembers = data.Members;
                 currentGuildFunds = data.Funds || {};
-                previousGuildFunds = {};
-                // Initialize empty shard history
-                guildShardEvents = [];
-                memberShardEvents = {};
+                previousGuildFunds = contributionHistory.guild_funds || {};
+                applyShardHistoryFromContribution(contributionHistory);
                 cleanupClientHistory();
+                
+                // Check if data actually changed
+                const dataChanged = hasDataChanged(data.Members, data.contribution_history || {});
                 
                 // Always update resource IDs and re-render to ensure values persist
                 // Define resource display order: Mana Dust, Elemental Shards, Guild XP, Wood, Iron, Fish
