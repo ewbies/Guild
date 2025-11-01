@@ -1,0 +1,1052 @@
+{
+  "ID": 4,
+  "OwnerID": 312,
+  "Name": "Ewbies",
+  "Description": "ᘛ⁐ᕐᐷ",
+  "MOTD": "Tax day initiated! Ending Sunday 12am EST -Dumb Work in progress discord: https://discord.gg/SpdPBcpYXw Please send Roses your formulas for guild enchants!",
+  "Funds": {
+    "1": 136998053215012.64,
+    "2": 61690178837.421776,
+    "3": 6502,
+    "42": 142115685573609.97,
+    "7": 2702439811056.141,
+    "8": 463037118928.93036,
+    "9": 166548024595.12384
+  },
+  "Ranks": {
+    "1": {
+      "name": "dump",
+      "permission": 18446744073709551615,
+      "taxes": {
+        "1": 100,
+        "2": 100,
+        "42": 100,
+        "7": 100,
+        "8": 100,
+        "9": 100
+      }
+    },
+    "100": {
+      "name": "Default",
+      "permission": 96,
+      "taxes": {
+        "1": 20,
+        "2": 25,
+        "42": 35,
+        "7": 35,
+        "8": 35,
+        "9": 35
+      }
+    },
+    "2": {
+      "name": "Rat",
+      "permission": 8191,
+      "taxes": {
+        "1": 20,
+        "2": 25,
+        "42": 35,
+        "7": 40,
+        "8": 40,
+        "9": 40
+      }
+    },
+    "3": {
+      "name": "kooky",
+      "permission": 8191,
+      "taxes": {
+        "1": 20,
+        "2": 25,
+        "42": 35,
+        "7": 35,
+        "8": 35,
+        "9": 35
+      }
+    },
+    "4": {
+      "name": "Brains",
+      "permission": 8190,
+      "taxes": {
+        "1": 20,
+        "2": 20,
+        "42": 35,
+        "7": 40,
+        "8": 40,
+        "9": 40
+      }
+    },
+    "5": {
+      "name": "Enchanter",
+      "permission": 8190,
+      "taxes": {
+        "1": 20,
+        "2": 20,
+        "42": 35,
+        "7": 35,
+        "8": 35,
+        "9": 35
+      }
+    },
+    "6": {
+      "name": "Dungeon Master",
+      "permission": 98,
+      "taxes": {
+        "1": 20,
+        "2": 25,
+        "42": 35,
+        "7": 35,
+        "8": 35,
+        "9": 35
+      }
+    },
+    "97": {
+      "name": "TAX DAY",
+      "permission": 1122,
+      "taxes": {
+        "1": 100,
+        "2": 100,
+        "42": 100,
+        "7": 100,
+        "8": 100,
+        "9": 100
+      }
+    },
+    "98": {
+      "name": "Battler",
+      "permission": 98,
+      "taxes": {
+        "1": 20,
+        "2": 20,
+        "42": 35,
+        "7": 35,
+        "8": 35,
+        "9": 35
+      }
+    },
+    "99": {
+      "name": "TSer",
+      "permission": 98,
+      "taxes": {
+        "1": 20,
+        "2": 25,
+        "42": 35,
+        "7": 40,
+        "8": 40,
+        "9": 40
+      }
+    }
+  },
+  "TotalUpgrades": 1636,
+  "Upgrades": {
+    "1": 20,
+    "2": 20,
+    "3": 450,
+    "4": 300,
+    "5": 220,
+    "6": 449,
+    "7": 150,
+    "8": 27
+  },
+  "NextUpgrade": 0,
+  "DungeonLevel": 159,
+  "Level": 169,
+  "Members": {
+    "1047": {
+      "ID": 1047,
+      "Banned": false,
+      "Name": "Golster",
+      "Rank": 97,
+      "ActionType": "battle",
+      "Active": false,
+      "LastFatigue": 1762001658,
+      "Level": 4289,
+      "MiningLevel": 1,
+      "FishingLevel": 1,
+      "WoodcuttingLevel": 1,
+      "Contributions": {
+        "1": 3700293432701.46,
+        "2": 3762348478.802975,
+        "3": 20,
+        "42": 482396585842697.1
+      },
+      "Kills": 3839954,
+      "Deaths": 11407,
+      "GatherActions": 2,
+      "EventActions": 141824,
+      "PersonalTaxes": {
+        "1": 0,
+        "2": 0,
+        "7": 0,
+        "8": 0,
+        "9": 0
+      },
+      "Potions": {}
+    },
+    "1265": {
+      "ID": 1265,
+      "Banned": false,
+      "Name": "Roses",
+      "Rank": 97,
+      "ActionType": "fishing",
+      "Active": true,
+      "LastFatigue": 1754992533,
+      "Level": 3405,
+      "MiningLevel": 4708,
+      "FishingLevel": 8797,
+      "WoodcuttingLevel": 4708,
+      "Contributions": {
+        "1": -9092664831400.525,
+        "2": 246528483674.07184,
+        "3": 85,
+        "42": 94570878220090.27,
+        "7": 6354024781012.595,
+        "8": 172959186.29499826,
+        "9": 169215289.57844794
+      },
+      "Kills": 2227994,
+      "Deaths": 4876,
+      "GatherActions": 3154621,
+      "EventActions": 280509,
+      "PersonalTaxes": {},
+      "Potions": {
+        "122": 1500,
+        "124": 1500
+      }
+    },
+    "1393": {
+      "ID": 1393,
+      "Banned": false,
+      "Name": "Noiranam",
+      "Rank": 97,
+      "ActionType": "fishing",
+      "Active": true,
+      "LastFatigue": 1761650367,
+      "Level": 2705,
+      "MiningLevel": 2780,
+      "FishingLevel": 5842,
+      "WoodcuttingLevel": 2957,
+      "Contributions": {
+        "1": 611486652535.0922,
+        "2": 35364489715.46474,
+        "3": 12,
+        "42": 59289196242708.164,
+        "7": 954161529015.2081,
+        "8": 19290270986.32065,
+        "9": 13415673308.64086
+      },
+      "Kills": 1918958,
+      "Deaths": 1166,
+      "GatherActions": 2981385,
+      "EventActions": 73522,
+      "PersonalTaxes": {},
+      "Potions": {
+        "122": 635,
+        "124": 720
+      }
+    },
+    "1416": {
+      "ID": 1416,
+      "Banned": false,
+      "Name": "LoThere",
+      "Rank": 97,
+      "ActionType": "battle",
+      "Active": false,
+      "LastFatigue": 1761490404,
+      "Level": 3765,
+      "MiningLevel": 8,
+      "FishingLevel": 1,
+      "WoodcuttingLevel": 1,
+      "Contributions": {
+        "1": 13986455415282.203,
+        "2": 501281801.41810685,
+        "3": 296,
+        "42": 231387928282733.9,
+        "8": 1174206,
+        "9": 10000
+      },
+      "Kills": 3213188,
+      "Deaths": 1654,
+      "GatherActions": 13101,
+      "EventActions": 179236,
+      "PersonalTaxes": {
+        "1": 0,
+        "2": 0
+      },
+      "Potions": {
+        "120": 150
+      }
+    },
+    "1424": {
+      "ID": 1424,
+      "Banned": false,
+      "Name": "Riki",
+      "Rank": 97,
+      "ActionType": "battle",
+      "Active": true,
+      "LastFatigue": 1761913512,
+      "Level": 4195,
+      "MiningLevel": 1,
+      "FishingLevel": 1,
+      "WoodcuttingLevel": 1,
+      "Contributions": {
+        "1": 40662108865188.66,
+        "2": 4726777671.211087,
+        "3": 12,
+        "42": 421698751831589.4
+      },
+      "Kills": 3512222,
+      "Deaths": 1489,
+      "GatherActions": 6,
+      "EventActions": 148526,
+      "PersonalTaxes": {},
+      "Potions": {
+        "120": 120
+      }
+    },
+    "1740": {
+      "ID": 1740,
+      "Banned": false,
+      "Name": "Crepsucule",
+      "Rank": 97,
+      "ActionType": "woodcutting",
+      "Active": true,
+      "LastFatigue": 1759780581,
+      "Level": 2052,
+      "MiningLevel": 3456,
+      "FishingLevel": 3457,
+      "WoodcuttingLevel": 6698,
+      "Contributions": {
+        "1": 64993780574.54089,
+        "2": 103467706633.75467,
+        "3": 51,
+        "42": 17530885573531.852,
+        "7": 458549677.8181527,
+        "8": 1774677790393.603,
+        "9": 455386358.46885884
+      },
+      "Kills": 65329,
+      "Deaths": 62,
+      "GatherActions": 4927931,
+      "EventActions": 347421,
+      "PersonalTaxes": {
+        "1": 0,
+        "7": 0,
+        "8": 0,
+        "9": 0
+      },
+      "Potions": {
+        "122": 500,
+        "124": 500
+      }
+    },
+    "1775": {
+      "ID": 1775,
+      "Banned": false,
+      "Name": "Valentino",
+      "Rank": 97,
+      "ActionType": "battle",
+      "Active": true,
+      "LastFatigue": 1760364970,
+      "Level": 6424,
+      "MiningLevel": 2500,
+      "FishingLevel": 2500,
+      "WoodcuttingLevel": 2500,
+      "Contributions": {
+        "1": 44611703169785.53,
+        "2": 48856370390.749146,
+        "3": 129,
+        "42": 2553846550009716.5,
+        "7": 885649500.5913448,
+        "8": 23219650940.647408,
+        "9": 1136798372.8607256
+      },
+      "Kills": 4336824,
+      "Deaths": 8127,
+      "GatherActions": 501690,
+      "EventActions": 329127,
+      "PersonalTaxes": {
+        "2": 0,
+        "42": 0,
+        "7": 0,
+        "8": 0,
+        "9": 0
+      },
+      "Potions": {
+        "120": 500,
+        "122": 500
+      }
+    },
+    "1916": {
+      "ID": 1916,
+      "Banned": false,
+      "Name": "Lamor",
+      "Rank": 97,
+      "ActionType": "fishing",
+      "Active": true,
+      "LastFatigue": 1761626181,
+      "Level": 5220,
+      "MiningLevel": 2831,
+      "FishingLevel": 5669,
+      "WoodcuttingLevel": 2837,
+      "Contributions": {
+        "1": 9161142066262.068,
+        "2": 36652664103.33808,
+        "3": 5,
+        "42": 978629259602832.4,
+        "7": 576003999536.9391
+      },
+      "Kills": 2750371,
+      "Deaths": 13006,
+      "GatherActions": 2016933,
+      "EventActions": 340204,
+      "PersonalTaxes": {},
+      "Potions": {
+        "122": 700,
+        "124": 900
+      }
+    },
+    "1941": {
+      "ID": 1941,
+      "Banned": false,
+      "Name": "collatz",
+      "Rank": 97,
+      "ActionType": "fishing",
+      "Active": true,
+      "LastFatigue": 1757681600,
+      "Level": 1040,
+      "MiningLevel": 3445,
+      "FishingLevel": 6699,
+      "WoodcuttingLevel": 3445,
+      "Contributions": {
+        "1": 341205797037.1397,
+        "2": 78871288541.68799,
+        "3": 814,
+        "42": 402651258650.2788,
+        "7": 1806521899729.9124,
+        "8": 21292662.31538791,
+        "9": 12569066.547725148
+      },
+      "Kills": 70130,
+      "Deaths": 88,
+      "GatherActions": 4864221,
+      "EventActions": 367140,
+      "PersonalTaxes": {
+        "1": 0,
+        "7": 0,
+        "8": 0,
+        "9": 0
+      },
+      "Potions": {
+        "122": 100,
+        "124": 1000
+      }
+    },
+    "2038": {
+      "ID": 2038,
+      "Banned": false,
+      "Name": "Spritz",
+      "Rank": 97,
+      "ActionType": "battle",
+      "Active": true,
+      "LastFatigue": 1761988242,
+      "Level": 3566,
+      "MiningLevel": 1,
+      "FishingLevel": 1,
+      "WoodcuttingLevel": 1,
+      "Contributions": {
+        "1": 12750524283333.426,
+        "2": 1192101910.3606312,
+        "3": 5,
+        "42": 200035033198016.5
+      },
+      "Kills": 3920212,
+      "Deaths": 489,
+      "GatherActions": 0,
+      "EventActions": 23063,
+      "PersonalTaxes": {},
+      "Potions": {}
+    },
+    "2143": {
+      "ID": 2143,
+      "Banned": false,
+      "Name": "Kayley",
+      "Rank": 97,
+      "ActionType": "woodcutting",
+      "Active": false,
+      "LastFatigue": 1762000278,
+      "Level": 35,
+      "MiningLevel": 1,
+      "FishingLevel": 1,
+      "WoodcuttingLevel": 3339,
+      "Contributions": {
+        "1": 15129351226716.809,
+        "2": 7766070012.084602,
+        "3": 804,
+        "8": 68287598128.489296
+      },
+      "Kills": 84088,
+      "Deaths": 15,
+      "GatherActions": 3687612,
+      "EventActions": 26655,
+      "PersonalTaxes": {},
+      "Potions": {}
+    },
+    "2144": {
+      "ID": 2144,
+      "Banned": false,
+      "Name": "moo",
+      "Rank": 97,
+      "ActionType": "battle",
+      "Active": true,
+      "LastFatigue": 1761753597,
+      "Level": 7354,
+      "MiningLevel": 429,
+      "FishingLevel": 400,
+      "WoodcuttingLevel": 623,
+      "Contributions": {
+        "1": 155550044567639.1,
+        "2": 70364670292.64828,
+        "3": 112,
+        "42": 4705040152639414,
+        "7": 7046140.683367749,
+        "8": 30811921.029813312,
+        "9": 8830438.889537726
+      },
+      "Kills": 3675367,
+      "Deaths": 23669,
+      "GatherActions": 63946,
+      "EventActions": 292330,
+      "PersonalTaxes": {},
+      "Potions": {
+        "120": 2600,
+        "122": 2000
+      }
+    },
+    "2258": {
+      "ID": 2258,
+      "Banned": false,
+      "Name": "Ozmosis",
+      "Rank": 97,
+      "ActionType": "fishing",
+      "Active": true,
+      "LastFatigue": 1749027364,
+      "Level": 3018,
+      "MiningLevel": 3914,
+      "FishingLevel": 7483,
+      "WoodcuttingLevel": 3914,
+      "Contributions": {
+        "1": 23809003890.82392,
+        "2": 65482115123.710175,
+        "3": 8,
+        "42": 57866574718804.055,
+        "7": 2743025916344.984,
+        "8": 131713.22049177607
+      },
+      "Kills": 221020,
+      "Deaths": 346,
+      "GatherActions": 4466386,
+      "EventActions": 222943,
+      "PersonalTaxes": {
+        "1": 0,
+        "2": 0,
+        "42": 0,
+        "7": 0,
+        "8": 0,
+        "9": 0
+      },
+      "Potions": {
+        "122": 500,
+        "124": 1200
+      }
+    },
+    "2958": {
+      "ID": 2958,
+      "Banned": false,
+      "Name": "Godlycam",
+      "Rank": 97,
+      "ActionType": "fishing",
+      "Active": false,
+      "LastFatigue": 1761919905,
+      "Level": 1284,
+      "MiningLevel": 2350,
+      "FishingLevel": 4875,
+      "WoodcuttingLevel": 2351,
+      "Contributions": {
+        "1": 13735189347.11314,
+        "2": 24885270649.34113,
+        "3": 11,
+        "42": 694847343025.7615,
+        "7": 351799376292.9568,
+        "8": 38308502.42162226,
+        "9": 19523924.5318812
+      },
+      "Kills": 799022,
+      "Deaths": 3644,
+      "GatherActions": 2819145,
+      "EventActions": 267307,
+      "PersonalTaxes": {},
+      "Potions": {
+        "122": 40,
+        "124": 50
+      }
+    },
+    "312": {
+      "ID": 312,
+      "Banned": false,
+      "Name": "Dumb",
+      "Rank": 1,
+      "ActionType": "woodcutting",
+      "Active": true,
+      "LastFatigue": 1761477681,
+      "Level": 4016,
+      "MiningLevel": 518,
+      "FishingLevel": 514,
+      "WoodcuttingLevel": 6428,
+      "Contributions": {
+        "1": -225787641145274.38,
+        "2": -392898416615.7588,
+        "3": 24960,
+        "42": 348147136111047.3,
+        "7": 100049133093.98586,
+        "8": 3777964041706.801,
+        "9": 1364331200227.6333
+      },
+      "Kills": 645064,
+      "Deaths": 2514,
+      "GatherActions": 4519580,
+      "EventActions": 218127,
+      "PersonalTaxes": {
+        "2": 0,
+        "42": 0,
+        "7": 0,
+        "8": 0,
+        "9": 0
+      },
+      "Potions": {
+        "124": 600
+      }
+    },
+    "329": {
+      "ID": 329,
+      "Banned": false,
+      "Name": "Budday",
+      "Rank": 97,
+      "ActionType": "fishing",
+      "Active": true,
+      "LastFatigue": 1761912162,
+      "Level": 1547,
+      "MiningLevel": 3471,
+      "FishingLevel": 6759,
+      "WoodcuttingLevel": 3471,
+      "Contributions": {
+        "1": 34132990685.205376,
+        "2": 56526585545.85159,
+        "3": 4272,
+        "42": 2218293497238.284,
+        "7": 2372209492950.5117,
+        "8": 211270707.97168332,
+        "9": 287266005.27524805
+      },
+      "Kills": 338957,
+      "Deaths": 965,
+      "GatherActions": 4717170,
+      "EventActions": 301884,
+      "PersonalTaxes": {
+        "2": 10,
+        "42": 0,
+        "7": 50,
+        "8": 50,
+        "9": 50
+      },
+      "Potions": {
+        "122": 750,
+        "124": 1000
+      }
+    },
+    "341": {
+      "ID": 341,
+      "Banned": false,
+      "Name": "Deception",
+      "Rank": 97,
+      "ActionType": "woodcutting",
+      "Active": false,
+      "LastFatigue": 1762000245,
+      "Level": 3758,
+      "MiningLevel": 3007,
+      "FishingLevel": 3007,
+      "WoodcuttingLevel": 6000,
+      "Contributions": {
+        "1": 132948267082.91681,
+        "2": 60354602801.32528,
+        "3": 68,
+        "42": 253253570277832.9,
+        "8": 1350469916832.3303
+      },
+      "Kills": 275881,
+      "Deaths": 247,
+      "GatherActions": 3810081,
+      "EventActions": 281613,
+      "PersonalTaxes": {
+        "1": 0,
+        "42": 0,
+        "7": 0,
+        "8": 0,
+        "9": 0
+      },
+      "Potions": {}
+    },
+    "3728": {
+      "ID": 3728,
+      "Banned": false,
+      "Name": "Tronchedecake",
+      "Rank": 97,
+      "ActionType": "mining",
+      "Active": true,
+      "LastFatigue": 1761921999,
+      "Level": 2293,
+      "MiningLevel": 5543,
+      "FishingLevel": 2768,
+      "WoodcuttingLevel": 2768,
+      "Contributions": {
+        "1": 254120068627.46912,
+        "2": 41683576765.72478,
+        "3": 13,
+        "42": 29464854700128.8,
+        "7": 12.565534799999998,
+        "9": 737574152090.961
+      },
+      "Kills": 57171,
+      "Deaths": 13,
+      "GatherActions": 2586552,
+      "EventActions": 219467,
+      "PersonalTaxes": {},
+      "Potions": {
+        "122": 400,
+        "124": 800
+      }
+    },
+    "4146": {
+      "ID": 4146,
+      "Banned": false,
+      "Name": "Sylens",
+      "Rank": 97,
+      "ActionType": "mining",
+      "Active": true,
+      "LastFatigue": 1761735492,
+      "Level": 11,
+      "MiningLevel": 5456,
+      "FishingLevel": 2497,
+      "WoodcuttingLevel": 2497,
+      "Contributions": {
+        "2": 9498437111.97451,
+        "3": 15,
+        "9": 646939328118.5635
+      },
+      "Kills": 29254,
+      "Deaths": 0,
+      "GatherActions": 862803,
+      "EventActions": 44631,
+      "PersonalTaxes": {},
+      "Potions": {
+        "122": 300,
+        "124": 900
+      }
+    },
+    "420": {
+      "ID": 420,
+      "Banned": false,
+      "Name": "Arghny",
+      "Rank": 97,
+      "ActionType": "mining",
+      "Active": false,
+      "LastFatigue": 1761959358,
+      "Level": 742,
+      "MiningLevel": 4555,
+      "FishingLevel": 2159,
+      "WoodcuttingLevel": 2171,
+      "Contributions": {
+        "1": 12007265392751.768,
+        "2": 40434618587.89347,
+        "3": 239,
+        "42": 49563115106.17588,
+        "7": 114725.32289841826,
+        "8": 110657935.11134234,
+        "9": 322500440901.4861
+      },
+      "Kills": 1140636,
+      "Deaths": 6094,
+      "GatherActions": 2609293,
+      "EventActions": 138475,
+      "PersonalTaxes": {
+        "1": 20,
+        "2": 20,
+        "42": 20,
+        "7": 20,
+        "8": 20,
+        "9": 20
+      },
+      "Potions": {
+        "124": 180
+      }
+    },
+    "4277": {
+      "ID": 4277,
+      "Banned": false,
+      "Name": "serker",
+      "Rank": 97,
+      "ActionType": "fishing",
+      "Active": true,
+      "LastFatigue": 1761843240,
+      "Level": 1,
+      "MiningLevel": 1230,
+      "FishingLevel": 3147,
+      "WoodcuttingLevel": 1230,
+      "Contributions": {
+        "2": 634346231.9003223,
+        "3": 1,
+        "7": 60652230296.68585
+      },
+      "Kills": 16,
+      "Deaths": 0,
+      "GatherActions": 637646,
+      "EventActions": 1974,
+      "PersonalTaxes": {},
+      "Potions": {}
+    },
+    "4308": {
+      "ID": 4308,
+      "Banned": false,
+      "Name": "Punda",
+      "Rank": 97,
+      "ActionType": "fishing",
+      "Active": true,
+      "LastFatigue": 1761969225,
+      "Level": 58,
+      "MiningLevel": 2068,
+      "FishingLevel": 4797,
+      "WoodcuttingLevel": 2068,
+      "Contributions": {
+        "2": 6622642025.221146,
+        "3": 4,
+        "7": 315698971070.9028
+      },
+      "Kills": 17065,
+      "Deaths": 0,
+      "GatherActions": 538870,
+      "EventActions": 26660,
+      "PersonalTaxes": {},
+      "Potions": {
+        "122": 300,
+        "124": 300
+      }
+    },
+    "545": {
+      "ID": 545,
+      "Banned": false,
+      "Name": "piso_mojado",
+      "Rank": 97,
+      "ActionType": "woodcutting",
+      "Active": true,
+      "LastFatigue": 1759916667,
+      "Level": 197,
+      "MiningLevel": 570,
+      "FishingLevel": 570,
+      "WoodcuttingLevel": 4845,
+      "Contributions": {
+        "1": 30619930.32867697,
+        "2": 30784254848.881638,
+        "3": 17,
+        "42": 223378764.99846205,
+        "7": 360.8893365,
+        "8": 411501766996.1574,
+        "9": 548.836614613287
+      },
+      "Kills": 75888,
+      "Deaths": 38,
+      "GatherActions": 4334469,
+      "EventActions": 14785,
+      "PersonalTaxes": {},
+      "Potions": {
+        "122": 49
+      }
+    },
+    "695": {
+      "ID": 695,
+      "Banned": false,
+      "Name": "FlintStone",
+      "Rank": 97,
+      "ActionType": "mining",
+      "Active": true,
+      "LastFatigue": 1761861657,
+      "Level": 1531,
+      "MiningLevel": 5272,
+      "FishingLevel": 2548,
+      "WoodcuttingLevel": 2558,
+      "Contributions": {
+        "1": 480841242021.7288,
+        "2": 87053167501.70862,
+        "3": 52,
+        "42": 2274617462817.931,
+        "7": 63158326.27578537,
+        "8": 434022744.54078084,
+        "9": 1105093087882.0813
+      },
+      "Kills": 238053,
+      "Deaths": 140,
+      "GatherActions": 4764625,
+      "EventActions": 320474,
+      "PersonalTaxes": {
+        "1": 0,
+        "7": 95,
+        "8": 95,
+        "9": 95
+      },
+      "Potions": {
+        "122": 75
+      }
+    },
+    "704": {
+      "ID": 704,
+      "Banned": false,
+      "Name": "cryptosmiles",
+      "Rank": 97,
+      "ActionType": "mining",
+      "Active": true,
+      "LastFatigue": 1761991569,
+      "Level": 1492,
+      "MiningLevel": 4553,
+      "FishingLevel": 2141,
+      "WoodcuttingLevel": 2141,
+      "Contributions": {
+        "1": 33140874612.264545,
+        "2": 19083426282.278614,
+        "3": 14,
+        "42": 2983782551844.7437,
+        "7": 6518.324254018698,
+        "8": 18.745599999999996,
+        "9": 247660900545.74887
+      },
+      "Kills": 1814564,
+      "Deaths": 2558,
+      "GatherActions": 2398807,
+      "EventActions": 76663,
+      "PersonalTaxes": {},
+      "Potions": {}
+    },
+    "754": {
+      "ID": 754,
+      "Banned": false,
+      "Name": "Trade",
+      "Rank": 97,
+      "ActionType": "battle",
+      "Active": true,
+      "LastFatigue": 1761893280,
+      "Level": 7048,
+      "MiningLevel": 1283,
+      "FishingLevel": 1087,
+      "WoodcuttingLevel": 1057,
+      "Contributions": {
+        "1": 168836363184479.75,
+        "2": 48566265019.56875,
+        "3": 118,
+        "42": 3898719024783781,
+        "7": 825027910.0301594,
+        "8": 192392538.47928676,
+        "9": 455964184.16294694
+      },
+      "Kills": 4817682,
+      "Deaths": 3357,
+      "GatherActions": 204326,
+      "EventActions": 200372,
+      "PersonalTaxes": {},
+      "Potions": {
+        "120": 850,
+        "122": 600
+      }
+    },
+    "766": {
+      "ID": 766,
+      "Banned": false,
+      "Name": "Grumpster",
+      "Rank": 97,
+      "ActionType": "battle",
+      "Active": true,
+      "LastFatigue": 1761053036,
+      "Level": 4651,
+      "MiningLevel": 1608,
+      "FishingLevel": 604,
+      "WoodcuttingLevel": 604,
+      "Contributions": {
+        "1": 105184529487610.77,
+        "2": 5632270543.190854,
+        "3": 229,
+        "42": 636923727353647.8,
+        "7": 201214703.10154325,
+        "8": 1223156.063776741,
+        "9": 4300164920.211163
+      },
+      "Kills": 4888660,
+      "Deaths": 1437,
+      "GatherActions": 162946,
+      "EventActions": 207647,
+      "PersonalTaxes": {},
+      "Potions": {}
+    },
+    "878": {
+      "ID": 878,
+      "Banned": false,
+      "Name": "Neoakira",
+      "Rank": 97,
+      "ActionType": "mining",
+      "Active": false,
+      "LastFatigue": 1761993750,
+      "Level": 693,
+      "MiningLevel": 2747,
+      "FishingLevel": 1,
+      "WoodcuttingLevel": 1,
+      "Contributions": {
+        "1": 3884437018.3686166,
+        "2": 9567629506.049475,
+        "3": 892,
+        "42": 62313000838.02222,
+        "9": 26692035938.546883
+      },
+      "Kills": 1813719,
+      "Deaths": 15,
+      "GatherActions": 1435147,
+      "EventActions": 3514,
+      "PersonalTaxes": {
+        "1": 20,
+        "2": 10
+      },
+      "Potions": {}
+    },
+    "969": {
+      "ID": 969,
+      "Banned": false,
+      "Name": "dele",
+      "Rank": 97,
+      "ActionType": "battle",
+      "Active": false,
+      "LastFatigue": 1761949302,
+      "Level": 4489,
+      "MiningLevel": 1,
+      "FishingLevel": 1,
+      "WoodcuttingLevel": 1,
+      "Contributions": {
+        "1": 720374004314.6322,
+        "2": 1291706426.9691973,
+        "3": 17,
+        "42": 531530699881735.1
+      },
+      "Kills": 3649945,
+      "Deaths": 3705,
+      "GatherActions": 1103,
+      "EventActions": 83420,
+      "PersonalTaxes": {},
+      "Potions": {
+        "120": 30,
+        "122": 30
+      }
+    }
+  }
+}
