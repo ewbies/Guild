@@ -483,8 +483,13 @@ function smoothPerHourRate(newRate, previousRate, minutesElapsed) {
 
 // Calculate and store smoothed rates for all members and resources
 function calculateAndStoreRates(history, currentData, nowIso) {
-  if (!currentData?.Members || !history.members) {
+  if (!currentData?.Members) {
     return;
+  }
+  
+  // Initialize members if it doesn't exist (shouldn't happen, but be safe)
+  if (!history.members) {
+    history.members = {};
   }
 
   const smoothedRates = (history.smoothed_rates = history.smoothed_rates || {});
@@ -495,15 +500,22 @@ function calculateAndStoreRates(history, currentData, nowIso) {
     const historyMember = history.members[memberIdStr];
     
     if (!historyMember || !historyMember.last_update) {
-      // No history, can't calculate rates yet
+      // No history, can't calculate rates yet (expected on first request after reset)
       continue;
     }
 
     const previousTime = new Date(historyMember.last_update);
+    // Check if date parsing succeeded
+    if (isNaN(previousTime.getTime())) {
+      continue;
+    }
+    
     const diffMs = now.getTime() - previousTime.getTime();
     const minutesElapsed = diffMs / (1000 * 60);
     
-    if (minutesElapsed <= 0) {
+    // Need at least some time elapsed (even a few seconds is fine for calculation)
+    // Allow very small intervals (like a few seconds) for rate calculation
+    if (minutesElapsed <= 0 || !Number.isFinite(minutesElapsed)) {
       continue;
     }
 
@@ -543,6 +555,7 @@ function calculateAndStoreRates(history, currentData, nowIso) {
         const perMinute = calculatePerMinute(currentValue, previousValue, minutesElapsed);
         const perHour = calculatePerHourFromPerMinute(perMinute);
         
+        // Always store a rate if we can calculate one (even if 0), so we have data to show
         if (perHour !== null && !Number.isNaN(perHour)) {
           // If calculated rate is 0 but we have a cached non-zero rate, preserve the cache
           if (perHour === 0 && previousCachedRate !== undefined && previousCachedRate !== 0 && !Number.isNaN(previousCachedRate)) {
@@ -562,6 +575,13 @@ function calculateAndStoreRates(history, currentData, nowIso) {
           memberRates[resourceId] = previousCachedRate;
         }
         // If perHour is null/NaN and no cache exists, leave it undefined (will show "no history")
+      } else if (Object.prototype.hasOwnProperty.call(currentContributions, resourceId)) {
+        // Resource exists in current but not previous - this happens on first time seeing this resource
+        // Even if value is 0, if it's a new resource we've never seen, wait for next update
+        // But preserve cached rate if it exists
+        if (previousCachedRate !== undefined) {
+          memberRates[resourceId] = previousCachedRate;
+        }
       } else if (currentValue > 0) {
         // Resource exists in current but not previous - this happens on first time seeing this resource
         // Don't calculate a rate yet, wait for next update to establish baseline
