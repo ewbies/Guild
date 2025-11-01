@@ -1362,12 +1362,21 @@
                     const previousValue = (previousHistory && previousHistory.Contributions && previousHistory.Contributions[resourceIdStr]) || 0;
                     const hasHistory = !!previousHistory && !!previousHistory.last_update;
                     const clientRate = getClientRate('member', member.ID, resourceIdStr, currentValue, lastFetchTimestamp);
+                    const hadResourcePreviously = !!previousHistory
+                        && !!previousHistory.Contributions
+                        && Object.prototype.hasOwnProperty.call(previousHistory.Contributions, resourceIdStr);
+
                     let diff = clientRate.diff;
                     let perMinute = clientRate.perMinute;
 
                     if (perMinute === null) {
-                        diff = currentValue - previousValue;
-                        perMinute = calculatePerMinute(currentValue, previousValue, minutesElapsed, hasHistory);
+                        if (hasHistory && hadResourcePreviously) {
+                            diff = currentValue - previousValue;
+                            perMinute = calculatePerMinute(currentValue, previousValue, minutesElapsed, true);
+                        } else {
+                            diff = 0;
+                            perMinute = null;
+                        }
                     }
 
                     const perHour = calculatePerHourFromPerMinute(perMinute);
