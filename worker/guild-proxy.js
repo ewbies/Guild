@@ -500,7 +500,7 @@ function calculateAndStoreRates(history, currentData, nowIso) {
     }
 
     const previousTime = new Date(historyMember.last_update);
-    const diffMs = now - previousTime;
+    const diffMs = now.getTime() - previousTime.getTime();
     const minutesElapsed = diffMs / (1000 * 60);
     
     if (minutesElapsed <= 0) {
@@ -536,13 +536,14 @@ function calculateAndStoreRates(history, currentData, nowIso) {
       // Need to check if the resource existed in previous contributions, not just if value is 0
       const hadPreviousResource = Object.prototype.hasOwnProperty.call(previousContributions, resourceId);
       
+      // Get cached rate once at the start so it's available in all code paths
+      const previousCachedRate = memberRates[resourceId];
+      
       if (hadPreviousResource) {
         const perMinute = calculatePerMinute(currentValue, previousValue, minutesElapsed);
         const perHour = calculatePerHourFromPerMinute(perMinute);
         
         if (perHour !== null && !Number.isNaN(perHour)) {
-          const previousCachedRate = memberRates[resourceId];
-          
           // If calculated rate is 0 but we have a cached non-zero rate, preserve the cache
           if (perHour === 0 && previousCachedRate !== undefined && previousCachedRate !== 0 && !Number.isNaN(previousCachedRate)) {
             memberRates[resourceId] = previousCachedRate;
@@ -565,7 +566,6 @@ function calculateAndStoreRates(history, currentData, nowIso) {
         // Resource exists in current but not previous - this happens on first time seeing this resource
         // Don't calculate a rate yet, wait for next update to establish baseline
         // But if there's a cached rate, preserve it
-        const previousCachedRate = memberRates[resourceId];
         if (previousCachedRate !== undefined) {
           memberRates[resourceId] = previousCachedRate;
         }
