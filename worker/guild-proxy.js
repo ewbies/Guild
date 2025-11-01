@@ -59,7 +59,7 @@ export default {
         const upstreamResponse = await fetch(upstreamUrl, {
           cf: {
             cacheEverything: true,
-            cacheTtl: 60
+            cacheTtl: 15  // Reduced to 15 seconds to match refresh rate options
           },
           headers: {
             'Accept': 'application/json'

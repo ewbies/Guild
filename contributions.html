@@ -1182,10 +1182,8 @@
                 renderIndividualStats(searchTerm);
                 renderCollectiveStats();
                 
-                // Update last update time if data changed or manual refresh
-                if (dataChanged || isManual) {
-                    updateLastUpdateTime();
-                }
+                // Always update last update time to show refresh activity
+                updateLastUpdateTime();
                 
                 if (isManual) {
                     const loadingEl = document.getElementById('loading');
