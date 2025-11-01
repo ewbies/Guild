@@ -436,10 +436,10 @@
         
         let showFullValues = false;
         const GUILD_ID = 4;
-        const API_BASE_URL = 'https://ewbies-guild-api.widers.workers.dev';
+        const API_KEY = '5ab36da0-b83b-4362-8cd8-bc5a40b6d939';
 
         function buildGuildApiUrl(guildId) {
-                return `${API_BASE_URL}/api/guild/${guildId}`;
+                return `https://api.manarion.com/guilds/${guildId}?apikey=${API_KEY}`;
         }
 
         function formatNumber(num, useFull = false) {
@@ -500,8 +500,8 @@
                 rankNames[rankId] = rankInfo.name;
             }
             
-            // Get potion history from data (if available)
-            const potionHistory = data.potion_history || {};
+            // Potion history not available with direct API calls
+            const potionHistory = {};
             
             // Show search bar and export buttons
             document.querySelector('.search-container').style.display = 'block';

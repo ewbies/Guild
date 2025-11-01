@@ -1,0 +1,263 @@
+https://api.manarion.com/docs
+
+Documentation
+Endpoints
+GET https://api.manarion.com/players/{id|name} – Fetches public player profile info.
+GET https://api.manarion.com/guilds – Fetches the list of all guilds.
+GET https://api.manarion.com/guilds/{id}?apikey= – Fetches guild details. The API key is visible to the guild leader on the guild info page.
+GET https://api.manarion.com/leaderboards/{type}?page=1 – Fetches a leaderboard page. Optional guild={id} parameter
+GET https://api.manarion.com/market – Fetches market prices
+Below you can find the meaning of the enum constants you will encounter
+
+Leaderboard Types
+  battle
+  mining
+  fishing
+  woodcutting
+  total_level
+  pet_levels
+  base_stats
+  highest_enemy
+  total_actions
+  battle_quests
+  gather_quests
+  farm
+  event_points
+  enchant_inferno
+  enchant_tidal_wrath
+  enchant_wildheart
+  enchant_fire_resistance
+  enchant_water_resistance
+  enchant_nature_resistance
+  enchant_insight
+  enchant_bountiful_harvest
+  enchant_prosperity
+  enchant_fortune
+  enchant_growth
+  enchant_vitality
+  boost_base_spellpower
+  boost_base_ward
+  boost_mining
+  boost_fishing
+  boost_woodcutting
+  boost_damage
+  boost_multicast
+  boost_crit_chance
+  boost_crit_damage
+  boost_haste
+  boost_health
+  boost_ward
+  boost_focus
+  boost_mana
+  boost_overload
+  boost_time_dilation
+  boost_base_res
+  boost_potion
+  boost_mana_shield
+  highest_mastery
+  highest_damage_spell_rank
+  highest_resistance_spell_rank
+  kills_per_death
+  deaths
+  dungeon_completed
+  dungeon_treasures
+  dungeon_rooms
+  dungeon_manual
+  dungeon_guild_objectives
+  dungeon_event_objectives
+  dungeon_speedrun_small
+  dungeon_speedrun_medium
+  dungeon_speedrun_large
+  dungeon_speedrun_full_small
+  dungeon_speedrun_full_medium
+  dungeon_speedrun_full_large
+  MT_BUILD_SPEED
+  MT_BUILD_QUEUE
+  MT_EQUIP_BOOST
+  MT_STAT_INTELLECT
+  MT_STAT_STAMINA
+  MT_STAT_FOCUS
+  MT_STAT_SPIRIT
+  MT_STAT_MANA
+  MT_GUILD_DUNGEON
+  MT_PET_BONUS_XP
+  MT_LABORATORY
+Guild Upgrade IDs
+  COUNCIL_CHAMBER = 1
+  CLOAKROOM = 2
+  NEXUS_CRYSTAL = 3
+  MAGICAL_ACCOUNTING = 4
+  MANA_CONDUIT = 5
+  STUDY = 6
+  SLEEPING_QUARTERS = 7
+  ETHEREAL_REFINERY = 8
+Boost IDs
+  BASE_SPELLPOWER = 1
+  BASE_WARD = 2
+
+  STAT_INTELLECT = 3
+  STAT_STAMINA = 4
+  STAT_FOCUS = 5
+  STAT_SPIRIT = 6
+  STAT_MANA = 7
+
+  SPELLPOWER_VALUE = 8
+  WARD_VALUE = 9
+
+  FIRE_MASTERY = 10
+  WATER_MASTERY = 11
+  NATURE_MASTERY = 12
+
+  FIRE_SPELL_RANK = 21
+  WATER_SPELL_RANK = 22
+  NATURE_SPELL_RANK = 23
+  MANA_SHIELD_RANK = 24
+
+  MINING = 30
+  FISHING = 31
+  WOODCUTTING = 32
+
+  DAMAGE = 40
+  MULTICAST = 41
+  CRIT_CHANCE = 42
+  CRIT_DAMAGE = 43
+  HASTE = 44
+  HEALTH = 45
+  WARD = 46
+  FOCUS = 47
+  MANA = 48
+  OVERLOAD = 49
+  TIME_DILATION = 50
+
+  ENCHANT_INFERNO_RANK = 60
+  ENCHANT_TIDAL_WRATH_RANK = 61
+  ENCHANT_WILDHEART_RANK = 62
+  ENCHANT_FIRE_RESISTANCE_RANK = 63
+  ENCHANT_WATER_RESISTANCE_RANK = 64
+  ENCHANT_NATURE_RESISTANCE_RANK = 65
+  ENCHANT_INSIGHT_RANK = 66
+  ENCHANT_BOUNTIFUL_HARVEST_RANK = 67
+  ENCHANT_PROSPERITY_RANK = 68
+  ENCHANT_FORTUNE_RANK = 69
+  ENCHANT_GROWTH_RANK = 70
+  ENCHANT_VITALITY_RANK = 71
+
+  INFERNO_VALUE = 80
+  TIDAL_WRATH_VALUE = 81
+  WILDHEART_VALUE = 82
+  FIRE_RESISTANCE_VALUE = 83
+  WATER_RESISTANCE_VALUE = 84
+  NATURE_RESISTANCE_VALUE = 85
+  VITALITY_VALUE = 86
+
+  BASE_EXPERIENCE = 100
+  BASE_MANA_DUST = 101
+  DROP_BOOST = 102
+  MULTISTAT = 103
+  CONSTRUCTION = 104
+  ACTIONS = 105
+  BASE_RESOURCE = 106
+  QUEST_BOOST = 107
+  POTION_BOOST = 108
+  ASCENSION = 109
+  POTION_DURATION = 110
+
+  BATTLE_EXPERIENCE_BOOST = 120
+  MANA_DUST_BOOST = 121
+  ELEMENTAL_SHARD_BOOST = 122
+  STAT_DROP = 123
+  BASE_RESOURCE_AMOUNT = 124
+
+  FARM_HARVEST_GOLEM = 130
+  FARM_FERTILIZER = 131
+  FARM_PLOTS = 132
+  POTION_BELT = 133
+
+  DUNGEON_UNLOCKED = 140
+  DUNGEON_IDLE = 141
+  DUNGEON_QUEUE = 142
+  DUNGEON_MOVEMENT = 143
+  DUNGEON_VIEW = 144
+  DUNGEON_TREASURE = 145
+  DUNGEON_AUTO_LOOT = 146
+
+  MT_BUILD_SPEED = 150
+  MT_BUILD_QUEUE = 151
+  MT_EQUIP_BOOST = 152
+  MT_STAT_INTELLECT = 153
+  MT_STAT_STAMINA = 154
+  MT_STAT_FOCUS = 155
+  MT_STAT_SPIRIT = 156
+  MT_STAT_MANA = 157
+  MT_GUILD_DUNGEON = 158
+  MT_PET_BONUS_XP = 159
+  MT_LABORATORY = 160
+Item Slot IDs
+  WEAPON = 1
+  ROBE = 2
+  BOOTS = 3
+  GLOVES = 4
+  HAT = 5
+  CLOAK = 6
+  AMULET = 7
+  RING = 8
+Item Rarity IDs
+  COMMON = 1
+  UNCOMMON = 2
+  RARE = 3
+  EPIC = 4
+  LEGENDARY = 5
+  HEIRLOOM = 6
+  MYTHIC = 7
+Loot IDs
+  MANA_DUST = 1
+  ELEMENTAL_SHARDS = 2
+  CODEX = 3
+  FIRE_ESSENCE = 4
+  WATER_ESSENCE = 5
+  NATURE_ESSENCE = 6
+  FISH = 7
+  WOOD = 8
+  IRON = 9
+  ASBESTOS = 10
+  IRONBARK = 11
+  FISH_SCALES = 12
+  TOME_OF_FIRE = 13
+  TOME_OF_WATER = 14
+  TOME_OF_NATURE = 15
+  TOME_OF_MANA_SHIELD = 16
+  ENCHANT_FIRE_RESISTANCE = 17
+  ENCHANT_WATER_RESISTANCE = 18
+  ENCHANT_NATURE_RESISTANCE = 19
+  ENCHANT_INFERNO = 20
+  ENCHANT_TIDAL_WRATH = 21
+  ENCHANT_WILDHEART = 22
+  ENCHANT_INSIGHT = 23
+  ENCHANT_BOUNTIFUL_HARVEST = 24
+  ENCHANT_PROSPERITY = 25
+  ENCHANT_FORTUNE = 26
+  ENCHANT_GROWTH = 27
+  ENCHANT_VITALITY = 28
+  REAGENT_ELDERWOOD = 29
+  REAGENT_LODESTONE = 30
+  REAGENT_WHITE_PEARL = 31
+  REAGENT_FOUR_LEAF_CLOVER = 32
+  REAGENT_ENCHANTED_DROPLET = 33
+  REAGENT_INFERNAL_HEART = 34
+  ORB_OF_POWER = 35
+  ORB_OF_CHAOS = 36
+  ORB_OF_DIVINITY = 37
+  BOUND_CODEX = 38
+  SUNPETAL = 39
+  SAGEROOT = 40
+  BLOOMWELL = 41
+  GUILD_BATTLE_XP = 42
+  EVENT_POINTS = 43
+  CRYSTALLIZED_MANA = 44
+  ORB_OF_LEGACY = 45
+  ELEMENTIUM = 46
+  DIVINE_ESSENCE = 47
+  DUNGEON_POINTS = 48
+  EGG = 49
+  ORB_OF_PERFECTION = 50
+  BOUND_ELEMENTAL_SHARDS = 51
