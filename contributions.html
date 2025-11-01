@@ -1411,13 +1411,9 @@
                 };
             });
 
-            const guildShardSummary = summarizeShardWindow(guildShardEvents, renderNowMs);
-            const guildShardPerHour = guildShardSummary?.perHour ?? null;
-            if (guildShardPerHour === null) {
-                delete collectivePerHourTotals[SHARD_RESOURCE_ID];
-            } else {
-                collectivePerHourTotals[SHARD_RESOURCE_ID] = guildShardPerHour;
-            }
+            // For shards, use the sum of individual member rates only
+            // Do NOT use guild funds events - those include withdrawals and other operations
+            // Individual member rates are already summed into collectivePerHourTotals above
 
             let memberStats = allMemberStats;
             if (normalizedSearchTerm) {
