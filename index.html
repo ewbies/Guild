@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ewbies - Guild Members</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Inter', sans-serif;
+            background: #0A0014;
+            padding: 20px;
+            color: #FFFFFF;
+            min-height: 100vh;
+        }
+        
+        .container { 
+            max-width: 1600px; 
+            margin: 0 auto; 
+        }
+        
+        .header { 
+            background: #1A0033;
+            color: #7B68EE;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            position: relative;
+            border-bottom: 2px solid #6A5ACD;
+        }
+        
+        .header h1 { 
+            font-size: 2.5em; 
+            margin-bottom: 10px;
+            color: #7B68EE;
+        }
+        
+        .header .subtitle { 
+            font-size: 1.2em; 
+            opacity: 0.9;
+            color: #FFFFFF;
+        }
+        
+        .export-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #4B0082;
+            border: 2px solid #6A5ACD;
+            color: white;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .export-button:hover {
+            background: #6A5ACD;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        
+        .export-button:active {
+            transform: translateY(0);
+        }
+        
+        .content {
+            background: #1A0033;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            min-height: 400px;
+        }
+        
+        .search-container {
+            margin-bottom: 30px;
+        }
+        
+        .search-bar {
+            width: 100%;
+            padding: 15px 20px;
+            font-size: 1.1em;
+            border: 2px solid #2C004D;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            background: #2C004D;
+            color: #FFFFFF;
+        }
+        
+        .search-bar:focus {
+            outline: none;
+            border-color: #6A5ACD;
+            box-shadow: 0 4px 20px rgba(106, 90, 205, 0.3);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.5em;
+            color: #7B68EE;
+        }
+        
+        .error {
+            background: #1A0033;
+            border: 2px solid #7B68EE;
+            color: #FFFFFF;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .members-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .member-card {
+            background: #1A0033;
+            border: 2px solid #2F4F4F;
+            padding: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .member-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            border-color: #6A5ACD;
+        }
+        
+        .member-card.active {
+            border-left: 5px solid #32CD32;
+        }
+        
+        .member-card.inactive {
+            border-left: 5px solid #2F4F4F;
+            opacity: 0.75;
+        }
+        
+        .member-card.banned {
+            border-left: 5px solid #f44336;
+            background: #1A0033;
+        }
+        
+        .member-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #2F4F4F;
+        }
+        
+        .member-name {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #7B68EE;
+        }
+        
+        .member-status {
+            display: inline-block;
+            padding: 5px 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .member-status.active {
+            background: #32CD32;
+            color: #0A0014;
+        }
+        
+        .member-status.inactive {
+            background: #2F4F4F;
+            color: #FFFFFF;
+        }
+        
+        .member-status.banned {
+            background: #f44336;
+            color: #FFFFFF;
+        }
+        
+        .member-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .info-label {
+            font-size: 0.85em;
+            color: #FFFFFF;
+            margin-bottom: 5px;
+            font-weight: 500;
+            opacity: 0.7;
+        }
+        
+        .info-value {
+            font-size: 1.1em;
+            color: #FFFFFF;
+            font-weight: 600;
+        }
+        
+        .info-value.large {
+            font-size: 1.3em;
+            color: #7B68EE;
+        }
+        
+        .rank-badge {
+            background: #4B0082;
+            color: white;
+            padding: 5px 15px;
+            font-size: 0.9em;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 5px;
+        }
+        
+        .stats-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #2F4F4F;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        
+        .stat-item {
+            background: #2C004D;
+            padding: 10px;
+            border: 1px solid #4B0082;
+        }
+        
+        .contributions {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #2F4F4F;
+        }
+        
+        .contribution-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            margin: 5px 0;
+            background: #2C004D;
+            border-left: 3px solid #7B68EE;
+        }
+        
+        .potions-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #2F4F4F;
+        }
+        
+        .potion-item {
+            display: block;
+            background: #4B0082;
+            padding: 5px 12px;
+            margin: 5px 5px 5px 0;
+            font-size: 0.9em;
+            border: 1px solid #6A5ACD;
+            transition: all 0.3s ease;
+        }
+        
+        .potion-current {
+            background: #4B0082;
+            border-color: #6A5ACD;
+            border-width: 2px;
+        }
+        
+        .potion-history {
+            background: #2C004D;
+            border-color: #4B0082;
+            opacity: 0.8;
+            font-size: 0.85em;
+        }
+        
+        .no-potions {
+            color: #2F4F4F;
+            font-style: italic;
+        }
+        
+        @media (max-width: 768px) {
+            .members-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .member-info {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            body {
+                background: #0A0014 !important;
+                padding: 0;
+            }
+            
+            .header {
+                display: none !important;
+            }
+            
+            .content {
+                box-shadow: none;
+                background: #1A0033 !important;
+            }
+            
+            .member-card {
+                background: #1A0033 !important;
+                border-color: #2F4F4F !important;
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+            
+            .member-card.active {
+                border-left-color: #32CD32 !important;
+            }
+            
+            .member-card.inactive {
+                border-left-color: #2F4F4F !important;
+            }
+            
+            .member-card.banned {
+                border-left-color: #f44336 !important;
+                background: #1A0033 !important;
+            }
+            
+            .stat-item {
+                background: #2C004D !important;
+                border-color: #4B0082 !important;
+            }
+            
+            .contribution-item {
+                background: #2C004D !important;
+                border-left-color: #7B68EE !important;
+            }
+            
+            .potion-item {
+                background: #4B0082 !important;
+                border-color: #6A5ACD !important;
+            }
+            
+            .potion-history {
+                background: #2C004D !important;
+                border-color: #4B0082 !important;
+            }
+            
+            .rank-badge {
+                background: #4B0082 !important;
+            }
+            
+            .member-status.active {
+                background: #32CD32 !important;
+                color: #0A0014 !important;
+            }
+            
+            .member-status.inactive {
+                background: #2F4F4F !important;
+                color: #FFFFFF !important;
+            }
+            
+            .member-status.banned {
+                background: #f44336 !important;
+                color: #FFFFFF !important;
+            }
+            
+            .export-button {
+                display: none !important;
+            }
+            
+            .search-container {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Ewbies</h1>
+            <div class="subtitle">Guild Members</div>
+            <div style="position: absolute; top: 20px; right: 20px; display: flex; gap: 10px;">
+                <button id="contributions-btn" class="export-button" style="display: none; position: static;" onclick="window.location.href='contributions.html'">📈 Contributions</button>
+                <button id="toggle-abbrev-btn" class="export-button" style="display: none; position: static;">📊 Show Full Values</button>
+                <button id="export-html-btn" class="export-button" style="display: none; position: static;">📥 Export HTML</button>
+                <button id="export-pdf-btn" class="export-button" style="display: none; position: static;">📄 Export PDF</button>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div id="loading" class="loading">Loading guild members...</div>
+            <div id="error" class="error" style="display: none;"></div>
+            <div class="search-container" style="display: none;">
+                <input type="text" id="search-bar" class="search-bar" placeholder="Search members by name...">
+            </div>
+            <div id="members" class="members-grid"></div>
+        </div>
+    </div>
+
+    <script>
+        // Loot/Resource IDs mapping
+        const RESOURCE_NAMES = {
+            1: 'Mana Dust',
+            2: 'Elemental Shards',
+            42: 'Guild XP',
+            7: 'Fish',
+            8: 'Wood',
+            9: 'Iron'
+        };
+        
+        // Potion IDs mapping
+        const POTION_NAMES = {
+            120: 'Battle XP Boost',
+            121: 'Mana Dust Boost',
+            122: 'Elemental Shard Boost',
+            123: 'Stat Drop',
+            124: 'Base Resource Amount'
+        };
+        
+        let showFullValues = false;
+        
+        function formatNumber(num, useFull = false) {
+            if (useFull) {
+                return num.toLocaleString();
+            }
+            if (num >= 1e12) return (num / 1e12).toFixed(2) + 'T';
+            if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';
+            if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
+            if (num >= 1e3) return (num / 1e3).toFixed(2) + 'K';
+            return num.toFixed(0);
+        }
+        
+        function formatTimestamp(timestamp, useFull = false) {
+            const date = new Date(timestamp * 1000);
+            
+            if (useFull) {
+                return date.toLocaleString();
+            }
+            
+            const now = new Date();
+            const diff = Math.floor((now - date) / 1000);
+            
+            if (diff < 60) return 'just now';
+            if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+            if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+            if (diff < 604800) return Math.floor(diff / 86400) + 'd ago';
+            return date.toLocaleDateString();
+        }
+        
+        async function fetchGuildData() {
+            const loadingEl = document.getElementById('loading');
+            const errorEl = document.getElementById('error');
+            const membersEl = document.getElementById('members');
+            
+            loadingEl.style.display = 'block';
+            errorEl.style.display = 'none';
+            membersEl.innerHTML = '';
+            
+            // Try to load from local server API first, then fallback to test file
+            let data;
+            const GUILD_ID = 4;
+            const API_KEY = '5ab36da0-b83b-4362-8cd8-bc5a40b6d939';
+            
+            try {
+                // Try to use the local server API first
+                const url = `http://localhost:8000/api/guild/${GUILD_ID}?apikey=${API_KEY}`;
+                const response = await fetch(url);
+                
+                if (response.ok) {
+                    data = await response.json();
+                } else {
+                    throw new Error('API server not available');
+                }
+            } catch (apiError) {
+                // Fallback: Load from local JSON file
+                const localResponse = await fetch('test_response.json');
+                if (localResponse.ok) {
+                    data = await localResponse.json();
+                } else {
+                    throw new Error('No data source available');
+                }
+            }
+            
+            loadingEl.style.display = 'none';
+            
+            if (!data.Members) {
+                throw new Error('No members found in guild data');
+            }
+            
+            // Get rank names mapping
+            const rankNames = {};
+            for (const [rankId, rankInfo] of Object.entries(data.Ranks)) {
+                rankNames[rankId] = rankInfo.name;
+            }
+            
+            // Get potion history from data (if available)
+            const potionHistory = data.potion_history || {};
+            
+            // Show search bar and export buttons
+            document.querySelector('.search-container').style.display = 'block';
+            document.getElementById('contributions-btn').style.display = 'block';
+            document.getElementById('toggle-abbrev-btn').style.display = 'block';
+            document.getElementById('export-html-btn').style.display = 'block';
+            document.getElementById('export-pdf-btn').style.display = 'block';
+            
+            // Set up search functionality
+            setupSearch(data.Members, rankNames, potionHistory);
+            
+            // Set up export functionality
+            setupExport(data.Members, rankNames, potionHistory, data.Name || 'Ewbies');
+            
+            // Set up abbreviation toggle
+            setupAbbrevToggle();
+            
+            // Render all members
+            renderMembers(data.Members, rankNames, potionHistory);
+        }
+        
+        function setupExport(members, rankNames, potionHistory, guildName) {
+            const exportHtmlBtn = document.getElementById('export-html-btn');
+            const exportPdfBtn = document.getElementById('export-pdf-btn');
+            
+            exportHtmlBtn.addEventListener('click', () => {
+                exportStaticHTML(members, rankNames, potionHistory, guildName);
+            });
+            
+            exportPdfBtn.addEventListener('click', () => {
+                exportPDF(members, rankNames, potionHistory, guildName);
+            });
+        }
+        
+        function exportStaticHTML(members, rankNames, potionHistory, guildName) {
+            // Generate HTML with embedded data
+            const htmlContent = generateStaticHTML(members, rankNames, potionHistory, guildName);
+            
+            // Create a blob and download it
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `guild_members_${guildName}_${new Date().toISOString().split('T')[0]}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        function exportPDF(members, rankNames, potionHistory, guildName) {
+            // For PDF export, we'll use the browser's print-to-PDF functionality
+            // We need to temporarily hide search and export buttons
+            const searchContainer = document.querySelector('.search-container');
+            const exportButtons = document.getElementById('export-html-btn').parentElement;
+            const wasSearchVisible = searchContainer.style.display !== 'none';
+            const wasButtonsVisible = exportButtons.style.display !== 'none';
+            
+            searchContainer.style.display = 'none';
+            exportButtons.style.display = 'none';
+            
+            // Trigger print dialog with PDF option
+            window.print();
+            
+            // Restore visibility after a short delay
+            setTimeout(() => {
+                if (wasSearchVisible) searchContainer.style.display = 'block';
+                if (wasButtonsVisible) exportButtons.style.display = 'flex';
+            }, 1000);
+        }
+        
+        function generateStaticHTML(members, rankNames, potionHistory, guildName) {
+            // Get all the rendering code from renderMembers but generate static HTML
+            const membersArray = Object.values(members).sort((a, b) => a.Name.localeCompare(b.Name));
+            
+            let membersHTML = '';
+            membersArray.forEach(member => {
+                const contributions = Object.entries(member.Contributions || {})
+                    .filter(([_, value]) => value !== 0)
+                    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+                
+                const topContribution = contributions.length > 0 ? contributions[0] : null;
+                const kdRatio = member.Deaths > 0 ? (member.Kills / member.Deaths).toFixed(2) : member.Kills.toFixed(0);
+                const cardClass = member.Banned ? 'member-card banned' : (member.Active ? 'member-card active' : 'member-card inactive');
+                const highestLevel = Math.max(member.Level || 0, member.MiningLevel || 0, member.FishingLevel || 0, member.WoodcuttingLevel || 0);
+                
+                membersHTML += `
+        <div class="${cardClass}">
+            <div class="member-header">
+                <div>
+                    <div class="member-name">${member.Name}</div>
+                    <span class="rank-badge">${rankNames[member.Rank] || 'Unknown Rank'}</span>
+                </div>
+                <span class="member-status ${member.Banned ? 'banned' : (member.Active ? 'active' : 'inactive')}">
+                    ${member.Banned ? 'Banned' : (member.Active ? 'Active' : 'Inactive')}
+                </span>
+            </div>
+            
+            <div class="member-info">
+                <div class="info-item">
+                    <span class="info-label">Player ID</span>
+                    <span class="info-value">${member.ID}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Level</span>
+                    <span class="info-value large">${formatNumber(highestLevel, showFullValues)}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Primary Action</span>
+                    <span class="info-value">${member.ActionType || 'N/A'}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">${member.Active ? 'Status' : 'Last Active'}</span>
+                    <span class="info-value">${member.Active ? 'Currently Active' : formatTimestamp(member.LastFatigue, showFullValues)}</span>
+                </div>
+            </div>
+            
+            <div class="stats-section">
+                <div class="info-label" style="margin-bottom: 10px;">Gathering Levels</div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="info-label">Mining</div>
+                        <div class="info-value">${member.MiningLevel || 1}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="info-label">Fishing</div>
+                        <div class="info-value">${member.FishingLevel || 1}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="info-label">Woodcutting</div>
+                        <div class="info-value">${member.WoodcuttingLevel || 1}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stats-section">
+                <div class="info-label" style="margin-bottom: 10px;">Battle Stats</div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="info-label">Battle Level</div>
+                        <div class="info-value">${formatNumber(member.Level, showFullValues)}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="info-label">K/D Ratio</div>
+                        <div class="info-value">${kdRatio}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="info-label">Kills</div>
+                        <div class="info-value">${formatNumber(member.Kills, showFullValues)}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="info-label">Deaths</div>
+                        <div class="info-value">${formatNumber(member.Deaths, showFullValues)}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stats-section">
+                <div class="info-label" style="margin-bottom: 10px;">Activity</div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="info-label">Gather Actions</div>
+                        <div class="info-value">${formatNumber(member.GatherActions, showFullValues)}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="info-label">Event Actions</div>
+                        <div class="info-value">${formatNumber(member.EventActions, showFullValues)}</div>
+                    </div>
+                </div>
+            </div>
+            
+            ${topContribution ? `
+                <div class="contributions">
+                    <div class="info-label" style="margin-bottom: 10px;">Top Contribution</div>
+                    <div class="contribution-item">
+                        <span>${RESOURCE_NAMES[topContribution[0]] || 'Unknown'}</span>
+                        <span class="info-value">${formatNumber(Math.abs(topContribution[1]), showFullValues)}</span>
+                    </div>
+                </div>
+            ` : ''}
+            
+            ${member.Potions && Object.keys(member.Potions).length > 0 ? `
+                <div class="potions-section">
+                    <div class="info-label" style="margin-bottom: 10px;">Active Potions</div>
+                    ${Object.entries(member.Potions).map(([id, quantity]) => {
+                        const memberHistory = potionHistory[member.ID];
+                        const historyEntries = memberHistory && memberHistory[id] ? memberHistory[id] : [];
+                        const today = new Date();
+                        const todayStr = today.toLocaleDateString();
+                        
+                        let html = '';
+                        
+                        if (historyEntries.length > 0) {
+                            const recentHistory = historyEntries.slice(-5).reverse();
+                            for (const entry of recentHistory) {
+                                const entryDate = new Date(entry.timestamp);
+                                const entryDateStr = entryDate.toLocaleDateString();
+                                html += `
+                    <span class="potion-item potion-history">
+                        ${POTION_NAMES[id] || 'Unknown Potion'} (${entry.amount}) - ${entryDateStr}
+                    </span>
+                                `;
+                            }
+                        }
+                        
+                        html += `
+                    <span class="potion-item potion-current">
+                        ${POTION_NAMES[id] || 'Unknown Potion'} (${quantity}) - ${todayStr}
+                    </span>
+                        `;
+                        
+                        return html;
+                    }).join('')}
+                </div>
+            ` : ''}
+        </div>
+                `;
+            });
+            
+            return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${guildName} - Guild Members</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Inter', sans-serif;
+            background: #0A0014;
+            padding: 20px;
+            color: #FFFFFF;
+            min-height: 100vh;
+        }
+        
+        .container { 
+            max-width: 1600px; 
+            margin: 0 auto; 
+        }
+        
+        .header { 
+            background: #1A0033;
+            color: #7B68EE;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border-bottom: 2px solid #6A5ACD;
+        }
+        
+        .header h1 { 
+            font-size: 2.5em; 
+            margin-bottom: 10px;
+            color: #7B68EE;
+        }
+        
+        .header .subtitle { 
+            font-size: 1.2em; 
+            opacity: 0.9;
+            color: #FFFFFF;
+        }
+        
+        .content {
+            background: #1A0033;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            min-height: 400px;
+        }
+        
+        .search-container {
+            margin-bottom: 30px;
+        }
+        
+        .search-bar {
+            width: 100%;
+            padding: 15px 20px;
+            font-size: 1.1em;
+            border: 2px solid #2C004D;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            background: #2C004D;
+            color: #FFFFFF;
+        }
+        
+        .search-bar:focus {
+            outline: none;
+            border-color: #6A5ACD;
+            box-shadow: 0 4px 20px rgba(106, 90, 205, 0.3);
+        }
+        
+        .members-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .member-card {
+            background: #1A0033;
+            border: 2px solid #2F4F4F;
+            padding: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .member-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            border-color: #6A5ACD;
+        }
+        
+        .member-card.active {
+            border-left: 5px solid #32CD32;
+        }
+        
+        .member-card.inactive {
+            border-left: 5px solid #2F4F4F;
+            opacity: 0.75;
+        }
+        
+        .member-card.banned {
+            border-left: 5px solid #f44336;
+            background: #1A0033;
+        }
+        
+        .member-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #2F4F4F;
+        }
+        
+        .member-name {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #7B68EE;
+        }
+        
+        .member-status {
+            display: inline-block;
+            padding: 5px 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .member-status.active {
+            background: #32CD32;
+            color: #0A0014;
+        }
+        
+        .member-status.inactive {
+            background: #2F4F4F;
+            color: #FFFFFF;
+        }
+        
+        .member-status.banned {
+            background: #f44336;
+            color: #FFFFFF;
+        }
+        
+        .member-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .info-label {
+            font-size: 0.85em;
+            color: #FFFFFF;
+            margin-bottom: 5px;
+            font-weight: 500;
+            opacity: 0.7;
+        }
+        
+        .info-value {
+            font-size: 1.1em;
+            color: #FFFFFF;
+            font-weight: 600;
+        }
+        
+        .info-value.large {
+            font-size: 1.3em;
+            color: #7B68EE;
+        }
+        
+        .rank-badge {
+            background: #4B0082;
+            color: white;
+            padding: 5px 15px;
+            font-size: 0.9em;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 5px;
+        }
+        
+        .stats-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #2F4F4F;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        
+        .stat-item {
+            background: #2C004D;
+            padding: 10px;
+            border: 1px solid #4B0082;
+        }
+        
+        .contributions {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #2F4F4F;
+        }
+        
+        .contribution-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            margin: 5px 0;
+            background: #2C004D;
+            border-left: 3px solid #7B68EE;
+        }
+        
+        .potions-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #2F4F4F;
+        }
+        
+        .potion-item {
+            display: block;
+            background: #4B0082;
+            padding: 5px 12px;
+            margin: 5px 5px 5px 0;
+            font-size: 0.9em;
+            border: 1px solid #6A5ACD;
+            transition: all 0.3s ease;
+        }
+        
+        .potion-current {
+            background: #4B0082;
+            border-color: #6A5ACD;
+            border-width: 2px;
+        }
+        
+        .potion-history {
+            background: #2C004D;
+            border-color: #4B0082;
+            opacity: 0.8;
+            font-size: 0.85em;
+        }
+        
+        @media (max-width: 768px) {
+            .members-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .member-info {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="content">
+            <div class="members-grid">
+${membersHTML}
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+        }
+        
+        let currentMembers = {};
+        let currentRankNames = {};
+        let currentPotionHistory = {};
+        
+        function setupSearch(members, rankNames, potionHistory) {
+            // Store data for filtering
+            currentMembers = members;
+            currentRankNames = rankNames;
+            currentPotionHistory = potionHistory;
+            
+            const searchBar = document.getElementById('search-bar');
+            searchBar.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase().trim();
+                filterAndRender(searchTerm);
+            });
+        }
+        
+        function setupAbbrevToggle() {
+            const toggleBtn = document.getElementById('toggle-abbrev-btn');
+            toggleBtn.addEventListener('click', () => {
+                showFullValues = !showFullValues;
+                toggleBtn.textContent = showFullValues ? '📊 Show Abbreviated' : '📊 Show Full Values';
+                
+                // Re-render with current filter
+                const searchTerm = document.getElementById('search-bar').value.toLowerCase().trim();
+                filterAndRender(searchTerm);
+            });
+        }
+        
+        function filterAndRender(searchTerm) {
+            let filteredMembers = currentMembers;
+            
+            if (searchTerm) {
+                filteredMembers = {};
+                for (const [id, member] of Object.entries(currentMembers)) {
+                    if (member.Name.toLowerCase().includes(searchTerm)) {
+                        filteredMembers[id] = member;
+                    }
+                }
+            }
+            
+            renderMembers(filteredMembers, currentRankNames, currentPotionHistory);
+        }
+        
+        function renderMembers(members, rankNames, potionHistory) {
+            const membersEl = document.getElementById('members');
+            membersEl.innerHTML = '';
+            
+            // Convert members object to array and sort by name
+            const membersArray = Object.values(members).sort((a, b) => a.Name.localeCompare(b.Name));
+            
+            membersArray.forEach(member => {
+                const card = document.createElement('div');
+                
+                // Determine card class based on member status
+                if (member.Banned) {
+                    card.className = 'member-card banned';
+                } else if (member.Active) {
+                    card.className = 'member-card active';
+                } else {
+                    card.className = 'member-card inactive';
+                }
+                
+                const contributions = Object.entries(member.Contributions || {})
+                    .filter(([_, value]) => value !== 0)
+                    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+                
+                const topContribution = contributions.length > 0 ? contributions[0] : null;
+                
+                // Calculate K/D ratio
+                const kdRatio = member.Deaths > 0 ? (member.Kills / member.Deaths).toFixed(2) : member.Kills.toFixed(0);
+                
+                // Calculate highest level across all types
+                const highestLevel = Math.max(member.Level || 0, member.MiningLevel || 0, member.FishingLevel || 0, member.WoodcuttingLevel || 0);
+                
+                card.innerHTML = `
+                    <div class="member-header">
+                        <div>
+                            <div class="member-name">${member.Name}</div>
+                            <span class="rank-badge">${rankNames[member.Rank] || 'Unknown Rank'}</span>
+                        </div>
+                        <span class="member-status ${member.Banned ? 'banned' : (member.Active ? 'active' : 'inactive')}">
+                            ${member.Banned ? 'Banned' : (member.Active ? 'Active' : 'Inactive')}
+                        </span>
+                    </div>
+                    
+                    <div class="member-info">
+                        <div class="info-item">
+                            <span class="info-label">Player ID</span>
+                            <span class="info-value">${member.ID}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Level</span>
+                            <span class="info-value large">${formatNumber(highestLevel, showFullValues)}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Primary Action</span>
+                            <span class="info-value">${member.ActionType || 'N/A'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">${member.Active ? 'Status' : 'Last Active'}</span>
+                            <span class="info-value">${member.Active ? 'Currently Active' : formatTimestamp(member.LastFatigue, showFullValues)}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stats-section">
+                        <div class="info-label" style="margin-bottom: 10px;">Gathering Levels</div>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="info-label">Mining</div>
+                                <div class="info-value">${member.MiningLevel || 1}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="info-label">Fishing</div>
+                                <div class="info-value">${member.FishingLevel || 1}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="info-label">Woodcutting</div>
+                                <div class="info-value">${member.WoodcuttingLevel || 1}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="stats-section">
+                        <div class="info-label" style="margin-bottom: 10px;">Battle Stats</div>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="info-label">Battle Level</div>
+                                <div class="info-value">${formatNumber(member.Level, showFullValues)}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="info-label">K/D Ratio</div>
+                                <div class="info-value">${kdRatio}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="info-label">Kills</div>
+                                <div class="info-value">${formatNumber(member.Kills, showFullValues)}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="info-label">Deaths</div>
+                                <div class="info-value">${formatNumber(member.Deaths, showFullValues)}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="stats-section">
+                        <div class="info-label" style="margin-bottom: 10px;">Activity</div>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="info-label">Gather Actions</div>
+                                <div class="info-value">${formatNumber(member.GatherActions, showFullValues)}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="info-label">Event Actions</div>
+                                <div class="info-value">${formatNumber(member.EventActions, showFullValues)}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    ${topContribution ? `
+                        <div class="contributions">
+                            <div class="info-label" style="margin-bottom: 10px;">Top Contribution</div>
+                            <div class="contribution-item">
+                                <span>${RESOURCE_NAMES[topContribution[0]] || 'Unknown'}</span>
+                                <span class="info-value">${formatNumber(Math.abs(topContribution[1]), showFullValues)}</span>
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    ${member.Potions && Object.keys(member.Potions).length > 0 ? `
+                        <div class="potions-section">
+                            <div class="info-label" style="margin-bottom: 10px;">Active Potions</div>
+                            ${Object.entries(member.Potions).map(([id, quantity]) => {
+                                const memberHistory = potionHistory[member.ID];
+                                const historyEntries = memberHistory && memberHistory[id] ? memberHistory[id] : [];
+                                const today = new Date();
+                                const todayStr = today.toLocaleDateString();
+                                
+                                let html = '';
+                                
+                                // Show historical changes above current (newest first)
+                                if (historyEntries.length > 0) {
+                                    // Show last 5 historical entries, most recent first
+                                    const recentHistory = historyEntries.slice(-5).reverse();
+                                    for (const entry of recentHistory) {
+                                        const entryDate = new Date(entry.timestamp);
+                                        const entryDateStr = entryDate.toLocaleDateString();
+                                        
+                                        html += `
+                                            <span class="potion-item potion-history">
+                                                ${POTION_NAMES[id] || 'Unknown Potion'} (${entry.amount}) - ${entryDateStr}
+                                            </span>
+                                        `;
+                                    }
+                                }
+                                
+                                // Show current potion with today's date
+                                html += `
+                                    <span class="potion-item potion-current">
+                                        ${POTION_NAMES[id] || 'Unknown Potion'} (${quantity}) - ${todayStr}
+                                    </span>
+                                `;
+                                
+                                return html;
+                            }).join('')}
+                        </div>
+                    ` : ''}
+                `;
+                
+                membersEl.appendChild(card);
+            });
+        }
+        
+        function showError(message) {
+            const loadingEl = document.getElementById('loading');
+            const errorEl = document.getElementById('error');
+            
+            loadingEl.style.display = 'none';
+            errorEl.style.display = 'block';
+            errorEl.textContent = message;
+        }
+        
+        // Initialize
+        fetchGuildData().catch(error => {
+            console.error('Error fetching guild data:', error);
+            showError(error.message);
+        });
+    </script>
+</body>
+</html>

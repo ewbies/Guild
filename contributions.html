@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contributions Tracker - Ewbies</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Inter', sans-serif;
+            background: #0A0014;
+            padding: 20px;
+            color: #FFFFFF;
+            min-height: 100vh;
+        }
+        
+        .container { 
+            max-width: 1800px; 
+            margin: 0 auto; 
+        }
+        
+        .header { 
+            background: #1A0033;
+            color: #7B68EE;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            position: relative;
+            border-bottom: 2px solid #6A5ACD;
+            margin-bottom: 20px;
+        }
+        
+        .header h1 { 
+            font-size: 2.5em; 
+            margin-bottom: 10px;
+            color: #7B68EE;
+        }
+        
+        .header .subtitle { 
+            font-size: 1.2em; 
+            opacity: 0.9;
+            color: #FFFFFF;
+        }
+        
+        .nav-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: #4B0082;
+            border: 2px solid #6A5ACD;
+            color: white;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .nav-button:hover {
+            background: #6A5ACD;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        
+        .content {
+            background: #1A0033;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.5em;
+            color: #7B68EE;
+        }
+        
+        .error {
+            background: #1A0033;
+            border: 2px solid #7B68EE;
+            color: #FFFFFF;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        .section-title {
+            font-size: 1.8em;
+            color: #7B68EE;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #2F4F4F;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .stat-card {
+            background: #2C004D;
+            border: 2px solid #4B0082;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            border-color: #6A5ACD;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(106, 90, 205, 0.3);
+        }
+        
+        .stat-card-title {
+            font-size: 1em;
+            color: #FFFFFF;
+            margin-bottom: 10px;
+            opacity: 0.8;
+            font-weight: 500;
+        }
+        
+        .stat-card-value {
+            font-size: 2em;
+            color: #7B68EE;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-card-subvalue {
+            font-size: 0.9em;
+            color: #FFFFFF;
+            opacity: 0.7;
+        }
+        
+        .members-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .members-table th {
+            background: #2C004D;
+            color: #7B68EE;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            border: 1px solid #4B0082;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .members-table td {
+            padding: 12px 15px;
+            border: 1px solid #2F4F4F;
+            background: #1A0033;
+        }
+        
+        .members-table tr:hover td {
+            background: #2C004D;
+        }
+        
+        .members-table .member-name {
+            color: #7B68EE;
+            font-weight: 600;
+        }
+        
+        .members-table .resource-value {
+            text-align: right;
+            font-family: monospace;
+        }
+        
+        .members-table .per-hour {
+            color: #32CD32;
+            font-weight: 500;
+        }
+        
+        .search-bar {
+            width: 100%;
+            padding: 15px 20px;
+            font-size: 1.1em;
+            border: 2px solid #2C004D;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            background: #2C004D;
+            color: #FFFFFF;
+            margin-bottom: 20px;
+        }
+        
+        .search-bar:focus {
+            outline: none;
+            border-color: #6A5ACD;
+            box-shadow: 0 4px 20px rgba(106, 90, 205, 0.3);
+        }
+        
+        .toggle-button {
+            background: #4B0082;
+            border: 2px solid #6A5ACD;
+            color: white;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+        
+        .toggle-button:hover {
+            background: #6A5ACD;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        
+        .info-text {
+            color: #FFFFFF;
+            opacity: 0.7;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #2C004D;
+            border-left: 3px solid #7B68EE;
+        }
+        
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background: #2C004D;
+            border: 1px solid #4B0082;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .refresh-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #32CD32;
+            animation: pulse 2s infinite;
+        }
+        
+        .refresh-dot.inactive {
+            background: #2F4F4F;
+            animation: none;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .status-text {
+            color: #FFFFFF;
+            opacity: 0.8;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .refresh-rate-label {
+            color: #FFFFFF;
+            font-size: 0.9em;
+            margin-right: 5px;
+        }
+        
+        .refresh-rate-select {
+            background: #1A0033;
+            border: 2px solid #4B0082;
+            color: #FFFFFF;
+            padding: 8px 12px;
+            font-size: 0.9em;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+        
+        .refresh-rate-select:hover {
+            border-color: #6A5ACD;
+            background: #2C004D;
+        }
+        
+        .refresh-rate-select:focus {
+            outline: none;
+            border-color: #7B68EE;
+            box-shadow: 0 0 10px rgba(123, 104, 238, 0.3);
+        }
+        
+        .export-button {
+            background: #4B0082;
+            border: 2px solid #6A5ACD;
+            color: white;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .export-button:hover {
+            background: #6A5ACD;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        
+        .export-button:active {
+            transform: translateY(0);
+        }
+        
+        @media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            body {
+                background: #0A0014 !important;
+                padding: 0;
+            }
+            
+            .header {
+                display: none !important;
+            }
+            
+            .content {
+                box-shadow: none;
+                background: #1A0033 !important;
+            }
+            
+            .export-button {
+                display: none !important;
+            }
+            
+            .status-bar {
+                display: none !important;
+            }
+            
+            .search-bar {
+                display: none !important;
+            }
+            
+            .info-text {
+                display: none !important;
+            }
+            
+            .stat-card {
+                background: #2C004D !important;
+                border-color: #4B0082 !important;
+                page-break-inside: avoid;
+            }
+            
+            .members-table th {
+                background: #2C004D !important;
+                border-color: #4B0082 !important;
+            }
+            
+            .members-table td {
+                background: #1A0033 !important;
+                border-color: #2F4F4F !important;
+            }
+            
+            .section-title {
+                color: #7B68EE !important;
+                border-bottom-color: #2F4F4F !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="index.html" class="nav-button">← Back to Members</a>
+            <h1>Contributions Tracker</h1>
+            <div class="subtitle">Ewbies Guild</div>
+            <div style="position: absolute; top: 20px; right: 20px; display: flex; gap: 10px;">
+                <button id="export-html-btn" class="export-button" style="display: none; position: static;">📥 Export HTML</button>
+                <button id="export-pdf-btn" class="export-button" style="display: none; position: static;">📄 Export PDF</button>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div id="loading" class="loading">Loading contributions data...</div>
+            <div id="error" class="error" style="display: none;"></div>
+            
+            <div id="content-area" style="display: none;">
+                <div class="status-bar">
+                    <div class="status-indicator">
+                        <span class="refresh-dot" id="refresh-dot"></span>
+                        <span class="status-text" id="status-text">Auto-refresh: Active (updates every 1 minute)</span>
+                        <span class="status-text" id="last-update">Last update: Just now</span>
+                    </div>
+                    <div class="button-group">
+                        <label for="refresh-rate-select" class="refresh-rate-label">Refresh Rate:</label>
+                        <select id="refresh-rate-select" class="refresh-rate-select">
+                            <option value="5000">5 seconds</option>
+                            <option value="10000">10 seconds</option>
+                            <option value="15000">15 seconds</option>
+                            <option value="30000">30 seconds</option>
+                            <option value="60000" selected>1 minute</option>
+                            <option value="120000">2 minutes</option>
+                            <option value="300000">5 minutes</option>
+                        </select>
+                        <button id="toggle-refresh-btn" class="toggle-button" style="margin-bottom: 0;">⏸️ Pause Auto-Refresh</button>
+                        <button id="toggle-full-btn" class="toggle-button" style="margin-bottom: 0;">📊 Show Full Values</button>
+                        <button id="manual-refresh-btn" class="toggle-button" style="margin-bottom: 0;">🔄 Refresh Now</button>
+                    </div>
+                </div>
+                
+                <div class="info-text">
+                    <strong>Note:</strong> Per-hour rates are calculated from per-minute rates (change per minute × 60). 
+                    Rates are based on the difference between current and previous contribution totals divided by time elapsed in minutes. 
+                    On first load, rates will show "---" until we have at least 2 data points. Auto-refresh updates the page every 1 minute when values change.
+                </div>
+                
+                <div class="section">
+                    <h2 class="section-title">Collective Contributions (Per Hour)</h2>
+                    <div id="collective-stats" class="stats-grid"></div>
+                </div>
+                
+                <div class="section">
+                    <h2 class="section-title">Individual Contributions (Per Hour)</h2>
+                    <input type="text" id="search-bar" class="search-bar" placeholder="Search members by name...">
+                    <div style="overflow-x: auto;">
+                        <table class="members-table" id="members-table">
+                            <thead>
+                                <tr id="table-header"></tr>
+                            </thead>
+                            <tbody id="table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Loot/Resource IDs mapping (ordered as: Mana Dust, Elemental Shards, Guild XP, Wood, Iron, Fish)
+        const RESOURCE_NAMES = {
+            1: 'Mana Dust',
+            2: 'Elemental Shards',
+            42: 'Guild XP',
+            8: 'Wood',
+            9: 'Iron',
+            7: 'Fish'
+        };
+        
+        let showFullValues = false;
+        let currentMembers = {};
+        let contributionHistory = {};
+        let currentGuildFunds = {};
+        let previousGuildFunds = {};
+        let allResourceIds = [];
+        let autoRefreshInterval = null;
+        let autoRefreshEnabled = true;
+        // Load refresh interval from localStorage or default to 1 minute
+        let refreshIntervalMs = parseInt(localStorage.getItem('refreshIntervalMs') || '60000', 10);
+        
+        function formatNumber(num, useFull = false) {
+            if (useFull) {
+                return num.toLocaleString();
+            }
+            if (num >= 1e12) return (num / 1e12).toFixed(2) + 'T';
+            if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';
+            if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
+            if (num >= 1e3) return (num / 1e3).toFixed(2) + 'K';
+            return num.toFixed(0);
+        }
+        
+        function calculatePerMinute(currentValue, previousValue, minutesElapsed, hasHistory = true) {
+            // Don't calculate if we don't have valid history (first load)
+            if (!hasHistory || minutesElapsed <= 0) return null;
+            
+            // Calculate the actual change (could be positive or negative)
+            const diff = currentValue - previousValue;
+            
+            // Only show positive changes (gains) for per-minute rate
+            // Negative values indicate withdrawals, which we'll show as 0 per minute
+            if (diff <= 0) return 0;
+            
+            return diff / minutesElapsed;
+        }
+        
+        function calculatePerHourFromPerMinute(perMinute) {
+            if (perMinute === null) return null;
+            return perMinute * 60;
+        }
+        
+        async function fetchGuildData() {
+            const loadingEl = document.getElementById('loading');
+            const errorEl = document.getElementById('error');
+            const contentArea = document.getElementById('content-area');
+            
+            loadingEl.style.display = 'block';
+            errorEl.style.display = 'none';
+            contentArea.style.display = 'none';
+            
+            let data;
+            const GUILD_ID = 4;
+            const API_KEY = '5ab36da0-b83b-4362-8cd8-bc5a40b6d939';
+            
+            try {
+                const url = `http://localhost:8000/api/guild/${GUILD_ID}?apikey=${API_KEY}`;
+                const response = await fetch(url);
+                
+                if (response.ok) {
+                    data = await response.json();
+                } else {
+                    throw new Error('API server not available');
+                }
+            } catch (apiError) {
+                const localResponse = await fetch('test_response.json');
+                if (localResponse.ok) {
+                    data = await localResponse.json();
+                } else {
+                    throw new Error('No data source available');
+                }
+            }
+            
+            loadingEl.style.display = 'none';
+            
+            if (!data.Members) {
+                throw new Error('No members found in guild data');
+            }
+            
+            // Get contribution history and guild funds
+            contributionHistory = data.contribution_history || {};
+            currentMembers = data.Members;
+            currentGuildFunds = data.Funds || {};
+            previousGuildFunds = contributionHistory.guild_funds || {};
+            
+            // Define resource display order: Mana Dust, Elemental Shards, Guild XP, Wood, Iron, Fish
+            const RESOURCE_ORDER = [1, 2, 42, 8, 9, 7];
+            
+            // Collect all resource IDs from guild funds (since we display guild funds for collective stats)
+            // Also include resources from member contributions for individual stats
+            const resourceSet = new Set();
+            
+            // Add resources from guild funds
+            if (currentGuildFunds) {
+                Object.keys(currentGuildFunds).forEach(id => {
+                    const resourceId = parseInt(id);
+                    if (resourceId !== 3) { // Exclude codices
+                        resourceSet.add(resourceId);
+                    }
+                });
+            }
+            
+            // Also add resources from member contributions
+            Object.values(currentMembers).forEach(member => {
+                if (member.Contributions) {
+                    Object.keys(member.Contributions).forEach(id => {
+                        const resourceId = parseInt(id);
+                        if (resourceId !== 3) { // Exclude codices
+                            resourceSet.add(resourceId);
+                        }
+                    });
+                }
+            });
+            
+            // Sort by custom order
+            allResourceIds = RESOURCE_ORDER.filter(id => resourceSet.has(id));
+            
+            // Ensure we have resource IDs - if not, use all resources from guild funds
+            if (allResourceIds.length === 0 && currentGuildFunds) {
+                allResourceIds = RESOURCE_ORDER.filter(id => {
+                    const resourceIdStr = String(id);
+                    return resourceIdStr in currentGuildFunds && id !== 3;
+                });
+            }
+            
+            contentArea.style.display = 'block';
+            
+            // Set up toggle button
+            setupToggle();
+            
+            // Set up search
+            setupSearch();
+            
+            // Set up auto-refresh
+            setupAutoRefresh();
+            
+            // Set up manual refresh
+            setupManualRefresh();
+            
+            // Set up export functionality
+            setupExport(data.Name || 'Ewbies');
+            
+            // Show export buttons
+            document.getElementById('export-html-btn').style.display = 'block';
+            document.getElementById('export-pdf-btn').style.display = 'block';
+            
+            // Render everything
+            renderCollectiveStats();
+            renderIndividualStats();
+            
+            // Update last update time
+            updateLastUpdateTime();
+            
+            // Start auto-refresh
+            startAutoRefresh();
+        }
+        
+        // Clean up interval when page unloads
+        window.addEventListener('beforeunload', () => {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+        });
+        
+        function setupToggle() {
+            const toggleBtn = document.getElementById('toggle-full-btn');
+            toggleBtn.addEventListener('click', () => {
+                showFullValues = !showFullValues;
+                toggleBtn.textContent = showFullValues ? '📊 Show Abbreviated' : '📊 Show Full Values';
+                renderCollectiveStats();
+                renderIndividualStats();
+            });
+        }
+        
+        function setupSearch() {
+            const searchBar = document.getElementById('search-bar');
+            searchBar.addEventListener('input', (e) => {
+                renderIndividualStats(e.target.value.toLowerCase().trim());
+            });
+        }
+        
+        function setupAutoRefresh() {
+            const toggleRefreshBtn = document.getElementById('toggle-refresh-btn');
+            const refreshRateSelect = document.getElementById('refresh-rate-select');
+            
+            // Set the selected value based on current interval
+            refreshRateSelect.value = refreshIntervalMs.toString();
+            
+            // Update refresh rate when changed
+            refreshRateSelect.addEventListener('change', (e) => {
+                const newInterval = parseInt(e.target.value, 10);
+                refreshIntervalMs = newInterval;
+                localStorage.setItem('refreshIntervalMs', newInterval.toString());
+                
+                // Restart auto-refresh with new interval if it's currently active
+                if (autoRefreshEnabled) {
+                    stopAutoRefresh();
+                    startAutoRefresh();
+                } else {
+                    // Just update the status text
+                    updateRefreshStatus(false);
+                }
+            });
+            
+            toggleRefreshBtn.addEventListener('click', () => {
+                if (autoRefreshEnabled) {
+                    stopAutoRefresh();
+                    toggleRefreshBtn.textContent = '▶️ Resume Auto-Refresh';
+                } else {
+                    startAutoRefresh();
+                    toggleRefreshBtn.textContent = '⏸️ Pause Auto-Refresh';
+                }
+            });
+        }
+        
+        function setupManualRefresh() {
+            const manualRefreshBtn = document.getElementById('manual-refresh-btn');
+            manualRefreshBtn.addEventListener('click', () => {
+                refreshData(true);
+            });
+        }
+        
+        function startAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+            
+            autoRefreshEnabled = true;
+            updateRefreshStatus(true);
+            
+            autoRefreshInterval = setInterval(() => {
+                refreshData(false);
+            }, refreshIntervalMs);
+        }
+        
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+            
+            autoRefreshEnabled = false;
+            updateRefreshStatus(false);
+        }
+        
+        function updateRefreshStatus(isActive) {
+            const dot = document.getElementById('refresh-dot');
+            const statusText = document.getElementById('status-text');
+            
+            if (isActive) {
+                dot.classList.remove('inactive');
+                const minutes = refreshIntervalMs / 60000;
+                const seconds = refreshIntervalMs / 1000;
+                if (minutes >= 1) {
+                    statusText.textContent = `Auto-refresh: Active (updates every ${minutes} minute${minutes !== 1 ? 's' : ''})`;
+                } else {
+                    statusText.textContent = `Auto-refresh: Active (updates every ${seconds} second${seconds !== 1 ? 's' : ''})`;
+                }
+            } else {
+                dot.classList.add('inactive');
+                statusText.textContent = 'Auto-refresh: Paused';
+            }
+        }
+        
+        function updateLastUpdateTime() {
+            const lastUpdateEl = document.getElementById('last-update');
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString();
+            lastUpdateEl.textContent = `Last update: ${timeStr}`;
+        }
+        
+        function hasDataChanged(newMembers, newHistory) {
+            // Check if any contribution values have changed
+            if (Object.keys(currentMembers).length !== Object.keys(newMembers).length) {
+                return true;
+            }
+            
+            for (const [memberId, member] of Object.entries(newMembers)) {
+                const oldMember = currentMembers[memberId];
+                if (!oldMember) return true;
+                
+                const oldContributions = oldMember.Contributions || {};
+                const newContributions = member.Contributions || {};
+                
+                // Check if any contribution value changed
+                for (const [resourceId, value] of Object.entries(newContributions)) {
+                    if (Math.abs(oldContributions[resourceId] || 0) !== Math.abs(value || 0)) {
+                        return true;
+                    }
+                }
+                
+                // Check if any contribution was removed
+                for (const [resourceId, value] of Object.entries(oldContributions)) {
+                    if (!(resourceId in newContributions)) {
+                        return true;
+                    }
+                }
+            }
+            
+            return false;
+        }
+        
+        async function refreshData(isManual = false) {
+            // Don't show loading indicator for auto-refresh to avoid flickering
+            if (isManual) {
+                const loadingEl = document.getElementById('loading');
+                loadingEl.style.display = 'block';
+            }
+            
+            let data;
+            const GUILD_ID = 4;
+            const API_KEY = '5ab36da0-b83b-4362-8cd8-bc5a40b6d939';
+            
+            try {
+                const url = `http://localhost:8000/api/guild/${GUILD_ID}?apikey=${API_KEY}`;
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error('API server not available');
+                }
+                
+                data = await response.json();
+                
+                if (!data.Members) {
+                    throw new Error('No members found in guild data');
+                }
+                
+                // Always update the stored data to ensure values persist
+                contributionHistory = data.contribution_history || {};
+                currentMembers = data.Members;
+                currentGuildFunds = data.Funds || {};
+                previousGuildFunds = contributionHistory.guild_funds || {};
+                
+                // Check if data actually changed
+                const dataChanged = hasDataChanged(data.Members, data.contribution_history || {});
+                
+                // Always update resource IDs and re-render to ensure values persist
+                // Define resource display order: Mana Dust, Elemental Shards, Guild XP, Wood, Iron, Fish
+                const RESOURCE_ORDER = [1, 2, 42, 8, 9, 7];
+                
+                // Update resource IDs from both guild funds and member contributions (excluding codices - ID 3)
+                const resourceSet = new Set();
+                
+                // Add resources from guild funds
+                if (currentGuildFunds) {
+                    Object.keys(currentGuildFunds).forEach(id => {
+                        const resourceId = parseInt(id);
+                        if (resourceId !== 3) { // Exclude codices
+                            resourceSet.add(resourceId);
+                        }
+                    });
+                }
+                
+                // Also add resources from member contributions
+                Object.values(currentMembers).forEach(member => {
+                    if (member.Contributions) {
+                        Object.keys(member.Contributions).forEach(id => {
+                            const resourceId = parseInt(id);
+                            if (resourceId !== 3) { // Exclude codices
+                                resourceSet.add(resourceId);
+                            }
+                        });
+                    }
+                });
+                
+                // Sort by custom order
+                allResourceIds = RESOURCE_ORDER.filter(id => resourceSet.has(id));
+                
+                // Re-render with current search term (always update display to show current values)
+                const searchBar = document.getElementById('search-bar');
+                const searchTerm = searchBar ? searchBar.value.toLowerCase().trim() : '';
+                renderCollectiveStats();
+                renderIndividualStats(searchTerm);
+                
+                // Update last update time if data changed or manual refresh
+                if (dataChanged || isManual) {
+                    updateLastUpdateTime();
+                }
+                
+                if (isManual) {
+                    const loadingEl = document.getElementById('loading');
+                    loadingEl.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error refreshing data:', error);
+                if (isManual) {
+                    const loadingEl = document.getElementById('loading');
+                    loadingEl.style.display = 'none';
+                    showError(error.message);
+                }
+            }
+        }
+        
+        function getGuildFundsMinutesElapsed() {
+            // Get time elapsed since last guild funds update
+            const defaultMinutes = 60;
+            
+            if (contributionHistory.guild_funds_timestamp) {
+                const previousTime = new Date(contributionHistory.guild_funds_timestamp);
+                const now = new Date();
+                const diffMs = now - previousTime;
+                const diffMinutes = diffMs / (1000 * 60);
+                return Math.max(diffMinutes, 0.1);
+            }
+            
+            return defaultMinutes;
+        }
+        
+        function renderCollectiveStats() {
+            const container = document.getElementById('collective-stats');
+            container.innerHTML = '';
+            
+            // If no resource IDs, try to get them from guild funds
+            if (allResourceIds.length === 0 && currentGuildFunds && Object.keys(currentGuildFunds).length > 0) {
+                const RESOURCE_ORDER = [1, 2, 42, 8, 9, 7];
+                allResourceIds = RESOURCE_ORDER.filter(id => {
+                    const resourceIdStr = String(id);
+                    return resourceIdStr in currentGuildFunds && id !== 3;
+                });
+            }
+            
+            // Use guild funds instead of summing member contributions
+            const guildFundsMinutesElapsed = getGuildFundsMinutesElapsed();
+            const hasGuildFundsHistory = Object.keys(previousGuildFunds).length > 0;
+            
+            // Render stat cards using guild funds
+            allResourceIds.forEach(resourceId => {
+                const resourceIdStr = String(resourceId);
+                const currentTotal = currentGuildFunds[resourceIdStr] || 0;
+                const previousTotal = (previousGuildFunds && previousGuildFunds[resourceIdStr]) || 0;
+                const perMinute = calculatePerMinute(currentTotal, previousTotal, guildFundsMinutesElapsed, hasGuildFundsHistory);
+                const perHour = calculatePerHourFromPerMinute(perMinute);
+                
+                const card = document.createElement('div');
+                card.className = 'stat-card';
+                card.innerHTML = `
+                    <div class="stat-card-title">${RESOURCE_NAMES[resourceId] || 'Unknown Resource'}</div>
+                    <div class="stat-card-value">${formatNumber(Math.abs(currentTotal), showFullValues)}</div>
+                    <div class="stat-card-subvalue">
+                        ${perHour !== null ? formatNumber(perHour, showFullValues) + '/hour' : 'No history yet (waiting for next update)'}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+        
+        function renderIndividualStats(searchTerm = null) {
+            const header = document.getElementById('table-header');
+            const body = document.getElementById('table-body');
+            const searchBar = document.getElementById('search-bar');
+            
+            // If no resource IDs, try to get them from current members or guild funds
+            if (allResourceIds.length === 0) {
+                const RESOURCE_ORDER = [1, 2, 42, 8, 9, 7];
+                const resourceSet = new Set();
+                
+                if (currentGuildFunds) {
+                    Object.keys(currentGuildFunds).forEach(id => {
+                        const resourceId = parseInt(id);
+                        if (resourceId !== 3) resourceSet.add(resourceId);
+                    });
+                }
+                
+                Object.values(currentMembers).forEach(member => {
+                    if (member.Contributions) {
+                        Object.keys(member.Contributions).forEach(id => {
+                            const resourceId = parseInt(id);
+                            if (resourceId !== 3) resourceSet.add(resourceId);
+                        });
+                    }
+                });
+                
+                allResourceIds = RESOURCE_ORDER.filter(id => resourceSet.has(id));
+            }
+            
+            // Get search term if not provided
+            if (searchTerm === null) {
+                searchTerm = searchBar ? searchBar.value.toLowerCase().trim() : '';
+            }
+            
+            // Build header
+            header.innerHTML = '<th>Member Name</th>';
+            allResourceIds.forEach(resourceId => {
+                header.innerHTML += `<th>${RESOURCE_NAMES[resourceId] || 'Unknown'}<br><small>(Per Hour)</small></th>`;
+            });
+            
+            // Filter members
+            let membersToShow = Object.values(currentMembers);
+            if (searchTerm) {
+                membersToShow = membersToShow.filter(member => 
+                    member.Name.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            // Sort by name
+            membersToShow.sort((a, b) => a.Name.localeCompare(b.Name));
+            
+            // Build rows
+            body.innerHTML = '';
+            membersToShow.forEach(member => {
+                const row = document.createElement('tr');
+                
+                // Get minutes elapsed for this specific member
+                const minutesElapsed = getMinutesElapsed(member.ID);
+                
+                // Member name
+                let rowHTML = `<td class="member-name">${member.Name}</td>`;
+                
+                // Contributions per resource
+                allResourceIds.forEach(resourceId => {
+                    // Use actual values (can be negative for withdrawals)
+                    const resourceIdStr = String(resourceId);
+                    const currentValue = member.Contributions?.[resourceIdStr] || 0;
+                    const previousHistory = contributionHistory[member.ID];
+                    const previousValue = (previousHistory && previousHistory.Contributions && previousHistory.Contributions[resourceIdStr]) || 0;
+                    const hasHistory = !!previousHistory && !!previousHistory.last_update;
+                    const perMinute = calculatePerMinute(currentValue, previousValue, minutesElapsed, hasHistory);
+                    const perHour = calculatePerHourFromPerMinute(perMinute);
+                    
+                    rowHTML += `
+                        <td class="resource-value">
+                            ${formatNumber(Math.abs(currentValue), showFullValues)}
+                            <br>
+                            <span class="per-hour">${perHour !== null ? formatNumber(perHour, showFullValues) + '/hr' : '--- (no history)'}</span>
+                        </td>
+                    `;
+                });
+                
+                row.innerHTML = rowHTML;
+                body.appendChild(row);
+            });
+        }
+        
+        function getMinutesElapsed(memberId = null) {
+            // Try to get last update time from history
+            const defaultMinutes = 60; // Default to 1 hour = 60 minutes if no history
+            
+            if (memberId && contributionHistory[memberId] && contributionHistory[memberId].last_update) {
+                const previousTime = new Date(contributionHistory[memberId].last_update);
+                const now = new Date();
+                const diffMs = now - previousTime;
+                const diffMinutes = diffMs / (1000 * 60);
+                return Math.max(diffMinutes, 0.1); // At least 0.1 minutes to avoid division by zero
+            }
+            
+            // Try to get a general last update time
+            if (Object.keys(contributionHistory).length > 0) {
+                let mostRecent = null;
+                for (const [id, history] of Object.entries(contributionHistory)) {
+                    if (history.last_update) {
+                        const time = new Date(history.last_update);
+                        if (!mostRecent || time > mostRecent) {
+                            mostRecent = time;
+                        }
+                    }
+                }
+                
+                if (mostRecent) {
+                    const now = new Date();
+                    const diffMs = now - mostRecent;
+                    const diffMinutes = diffMs / (1000 * 60);
+                    return Math.max(diffMinutes, 0.1);
+                }
+            }
+            
+            return defaultMinutes;
+        }
+        
+        function setupExport(guildName) {
+            const exportHtmlBtn = document.getElementById('export-html-btn');
+            const exportPdfBtn = document.getElementById('export-pdf-btn');
+            
+            exportHtmlBtn.addEventListener('click', () => {
+                exportStaticHTML(guildName);
+            });
+            
+            exportPdfBtn.addEventListener('click', () => {
+                exportPDF();
+            });
+        }
+        
+        function exportStaticHTML(guildName) {
+            const htmlContent = generateStaticHTML(guildName);
+            
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `contributions_${guildName}_${new Date().toISOString().split('T')[0]}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        function exportPDF() {
+            const statusBar = document.querySelector('.status-bar');
+            const exportButtons = document.getElementById('export-html-btn').parentElement;
+            const searchBar = document.getElementById('search-bar');
+            
+            const wasStatusVisible = statusBar.style.display !== 'none';
+            const wasButtonsVisible = exportButtons.style.display !== 'none';
+            const wasSearchVisible = searchBar.style.display !== 'none';
+            
+            statusBar.style.display = 'none';
+            exportButtons.style.display = 'none';
+            searchBar.style.display = 'none';
+            
+            window.print();
+            
+            setTimeout(() => {
+                if (wasStatusVisible) statusBar.style.display = 'flex';
+                if (wasButtonsVisible) exportButtons.style.display = 'flex';
+                if (wasSearchVisible) searchBar.style.display = 'block';
+            }, 1000);
+        }
+        
+        function generateStaticHTML(guildName) {
+            const guildFundsMinutesElapsed = getGuildFundsMinutesElapsed();
+            const hasGuildFundsHistory = Object.keys(previousGuildFunds).length > 0;
+            
+            // Generate collective stats HTML
+            let collectiveHTML = '';
+            allResourceIds.forEach(resourceId => {
+                const resourceIdStr = String(resourceId);
+                const currentTotal = currentGuildFunds[resourceIdStr] || 0;
+                const previousTotal = (previousGuildFunds && previousGuildFunds[resourceIdStr]) || 0;
+                const perMinute = calculatePerMinute(currentTotal, previousTotal, guildFundsMinutesElapsed, hasGuildFundsHistory);
+                const perHour = calculatePerHourFromPerMinute(perMinute);
+                
+                collectiveHTML += `
+                    <div class="stat-card">
+                        <div class="stat-card-title">${RESOURCE_NAMES[resourceId] || 'Unknown Resource'}</div>
+                        <div class="stat-card-value">${formatNumber(Math.abs(currentTotal), showFullValues)}</div>
+                        <div class="stat-card-subvalue">
+                            ${perHour !== null ? formatNumber(perHour, showFullValues) + '/hour' : 'No history yet'}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            // Generate individual stats HTML
+            const membersArray = Object.values(currentMembers).sort((a, b) => a.Name.localeCompare(b.Name));
+            let tableRows = '';
+            
+            membersArray.forEach(member => {
+                const minutesElapsed = getMinutesElapsed(member.ID);
+                let rowHTML = `<tr><td class="member-name">${member.Name}</td>`;
+                
+                allResourceIds.forEach(resourceId => {
+                    const resourceIdStr = String(resourceId);
+                    const currentValue = member.Contributions?.[resourceIdStr] || 0;
+                    const previousHistory = contributionHistory[member.ID];
+                    const previousValue = (previousHistory && previousHistory.Contributions && previousHistory.Contributions[resourceIdStr]) || 0;
+                    const hasHistory = !!previousHistory && !!previousHistory.last_update;
+                    const perMinute = calculatePerMinute(currentValue, previousValue, minutesElapsed, hasHistory);
+                    const perHour = calculatePerHourFromPerMinute(perMinute);
+                    
+                    rowHTML += `
+                        <td class="resource-value">
+                            ${formatNumber(Math.abs(currentValue), showFullValues)}
+                            <br>
+                            <span class="per-hour">${perHour !== null ? formatNumber(perHour, showFullValues) + '/hr' : '--- (no history)'}</span>
+                        </td>
+                    `;
+                });
+                
+                rowHTML += '</tr>';
+                tableRows += rowHTML;
+            });
+            
+            // Generate table header
+            let tableHeader = '<th>Member Name</th>';
+            allResourceIds.forEach(resourceId => {
+                tableHeader += `<th>${RESOURCE_NAMES[resourceId] || 'Unknown'}<br><small>(Per Hour)</small></th>`;
+            });
+            
+            return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contributions Tracker - ${guildName}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Inter', sans-serif;
+            background: #0A0014;
+            padding: 20px;
+            color: #FFFFFF;
+            min-height: 100vh;
+        }
+        
+        .container { 
+            max-width: 1800px; 
+            margin: 0 auto; 
+        }
+        
+        .header { 
+            background: #1A0033;
+            color: #7B68EE;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border-bottom: 2px solid #6A5ACD;
+            margin-bottom: 20px;
+        }
+        
+        .header h1 { 
+            font-size: 2.5em; 
+            margin-bottom: 10px;
+            color: #7B68EE;
+        }
+        
+        .header .subtitle { 
+            font-size: 1.2em; 
+            opacity: 0.9;
+            color: #FFFFFF;
+        }
+        
+        .content {
+            background: #1A0033;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        .section-title {
+            font-size: 1.8em;
+            color: #7B68EE;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #2F4F4F;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: #2C004D;
+            border: 2px solid #4B0082;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card-title {
+            font-size: 1em;
+            color: #FFFFFF;
+            margin-bottom: 10px;
+            opacity: 0.8;
+            font-weight: 500;
+        }
+        
+        .stat-card-value {
+            font-size: 2em;
+            color: #7B68EE;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-card-subvalue {
+            font-size: 0.9em;
+            color: #FFFFFF;
+            opacity: 0.7;
+        }
+        
+        .members-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .members-table th {
+            background: #2C004D;
+            color: #7B68EE;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            border: 1px solid #4B0082;
+        }
+        
+        .members-table td {
+            padding: 12px 15px;
+            border: 1px solid #2F4F4F;
+            background: #1A0033;
+        }
+        
+        .members-table tr:hover td {
+            background: #2C004D;
+        }
+        
+        .members-table .member-name {
+            color: #7B68EE;
+            font-weight: 600;
+        }
+        
+        .members-table .resource-value {
+            text-align: right;
+            font-family: monospace;
+        }
+        
+        .members-table .per-hour {
+            color: #32CD32;
+            font-weight: 500;
+        }
+        
+        @media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            body {
+                background: #0A0014 !important;
+            }
+            
+            .stat-card {
+                background: #2C004D !important;
+                border-color: #4B0082 !important;
+            }
+            
+            .members-table th {
+                background: #2C004D !important;
+                border-color: #4B0082 !important;
+            }
+            
+            .members-table td {
+                background: #1A0033 !important;
+                border-color: #2F4F4F !important;
+            }
+            
+            .section-title {
+                color: #7B68EE !important;
+                border-bottom-color: #2F4F4F !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Contributions Tracker</h1>
+            <div class="subtitle">${guildName}</div>
+        </div>
+        
+        <div class="content">
+            <div class="section">
+                <h2 class="section-title">Collective Contributions (Per Hour)</h2>
+                <div class="stats-grid">
+${collectiveHTML}
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2 class="section-title">Individual Contributions (Per Hour)</h2>
+                <div style="overflow-x: auto;">
+                    <table class="members-table">
+                        <thead>
+                            <tr>
+${tableHeader}
+                            </tr>
+                        </thead>
+                        <tbody>
+${tableRows}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+        }
+        
+        function showError(message) {
+            const loadingEl = document.getElementById('loading');
+            const errorEl = document.getElementById('error');
+            
+            loadingEl.style.display = 'none';
+            errorEl.style.display = 'block';
+            errorEl.textContent = message;
+        }
+        
+        // Initialize
+        fetchGuildData().catch(error => {
+            console.error('Error fetching guild data:', error);
+            showError(error.message);
+        });
+    </script>
+</body>
+</html>
+
