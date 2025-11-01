@@ -820,13 +820,13 @@
             const API_KEY = '5ab36da0-b83b-4362-8cd8-bc5a40b6d939';
             
             try {
-                const url = `http://localhost:8000/api/guild/${GUILD_ID}?apikey=${API_KEY}`;
+                const url = `https://api.manarion.com/guilds/${GUILD_ID}?apikey=${API_KEY}`;
                 const response = await fetch(url);
                 
                 if (response.ok) {
                     data = await response.json();
                 } else {
-                    throw new Error('API server not available');
+                    throw new Error('API request failed');
                 }
             } catch (apiError) {
                 const localResponse = await fetch('test_response.json');
