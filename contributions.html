@@ -577,13 +577,8 @@
             // Don't calculate if we don't have valid history (first load)
             if (!hasHistory || minutesElapsed <= 0) return null;
             
-            // Calculate the actual change (could be positive or negative)
+            // Calculate the actual change (positive values are deposits, negative are withdrawals)
             const diff = currentValue - previousValue;
-            
-            // Only show positive changes (gains) for per-minute rate
-            // Negative values indicate withdrawals, which we'll show as 0 per minute
-            if (diff <= 0) return 0;
-            
             return diff / minutesElapsed;
         }
         
@@ -735,11 +730,7 @@
                 const elapsedMinutes = (effectiveTimestamp - entry.timestamp) / (1000 * 60);
                 if (elapsedMinutes > 0) {
                     diff = currentValue - entry.value;
-                    if (diff > 0) {
-                        perMinute = diff / elapsedMinutes;
-                    } else {
-                        perMinute = 0;
-                    }
+                    perMinute = diff / elapsedMinutes;
                 }
             }
 
@@ -1389,20 +1380,13 @@
                     const memberRateCache = lastPerHourRates[member.ID];
                     let displayPerHour = perHour;
 
-                    if (perHour === null) {
+                    if (perHour === null || Number.isNaN(perHour)) {
                         displayPerHour = null;
-                    } else if (diff > 0) {
+                    } else if (diff !== 0) {
                         memberRateCache[resourceIdStr] = perHour;
                         displayPerHour = perHour;
-                    } else if (diff === 0) {
-                        if (memberRateCache[resourceIdStr] !== undefined) {
-                            displayPerHour = memberRateCache[resourceIdStr];
-                        } else {
-                            displayPerHour = perHour;
-                        }
-                    } else {
-                        memberRateCache[resourceIdStr] = 0;
-                        displayPerHour = 0;
+                    } else if (memberRateCache[resourceIdStr] !== undefined) {
+                        displayPerHour = memberRateCache[resourceIdStr];
                     }
 
                     if (displayPerHour !== null && displayPerHour !== undefined && !Number.isNaN(displayPerHour)) {
