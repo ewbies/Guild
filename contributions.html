@@ -1374,8 +1374,14 @@
                     if (perHour === null || perHour === undefined || Number.isNaN(perHour)) {
                         displayPerHour = null;
                     } else if (perMinute !== null) {
-                        memberRateCache[resourceIdStr] = perHour;
-                        displayPerHour = perHour;
+                        // If calculated rate is 0 but we have a cached non-zero rate, preserve the cache
+                        if (perHour === 0 && memberRateCache[resourceIdStr] !== undefined && memberRateCache[resourceIdStr] !== 0 && !Number.isNaN(memberRateCache[resourceIdStr])) {
+                            displayPerHour = memberRateCache[resourceIdStr];
+                        } else {
+                            // Update cache and use the new calculated rate
+                            memberRateCache[resourceIdStr] = perHour;
+                            displayPerHour = perHour;
+                        }
                     } else if (memberRateCache[resourceIdStr] !== undefined) {
                         displayPerHour = memberRateCache[resourceIdStr];
                     }
