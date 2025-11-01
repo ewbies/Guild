@@ -1177,6 +1177,8 @@
                         ? `Drop: ${minText}`
                         : `Range: ${minText} - ${maxText}`;
                 }
+                // Only show rate if we have actual history
+                // hasAggregate being true means we have a value, but we need hasActualHistoryForResource to confirm it's from real history
                 const perHourText = (hasAggregate && hasActualHistoryForResource)
                     ? `${formatNumber(aggregatePerHour, showFullValues)}/hour${isShard ? ` (last ${SHARD_RATE_WINDOW_HOURS}h)` : ''}`
                     : (isShard ? '--- (no shard drops yet)' : '--- (no history yet)');
@@ -1326,9 +1328,12 @@
                     const memberRateCache = lastPerHourRates[member.ID];
                     let displayPerHour = perHour;
 
+                    // Only show rate if we have actual history, not just cached data
+                    const hasActualHistory = hasHistory && hadResourcePreviously;
+                    
                     if (perHour === null || perHour === undefined || Number.isNaN(perHour)) {
                         displayPerHour = null;
-                    } else if (perMinute !== null) {
+                    } else if (perMinute !== null && hasActualHistory) {
                         const previousCachedRate = memberRateCache[resourceIdStr];
                         
                         // If calculated rate is 0 but we have a cached non-zero rate, preserve the cache
@@ -1345,18 +1350,19 @@
                             // Update cache with smoothed rate
                             memberRateCache[resourceIdStr] = displayPerHour;
                         }
-                    } else if (memberRateCache[resourceIdStr] !== undefined) {
+                    } else if (!hasActualHistory) {
+                        // No actual history - clear displayPerHour so it doesn't get aggregated
+                        displayPerHour = null;
+                    } else if (memberRateCache[resourceIdStr] !== undefined && displayPerHour === null && hasActualHistory) {
+                        // Only use cache if we have actual history but no calculated rate yet
                         displayPerHour = memberRateCache[resourceIdStr];
                     }
-
-                    // Only show rate if we have actual history, not just cached data
-                    const hasActualHistory = hasHistory && hadResourcePreviously;
                     
                     // Track if this resource has any actual history across all members
                     if (hasActualHistory) {
                         hasAnyHistory[resourceIdStr] = true;
                         
-                        // Only add to aggregate if we have actual history
+                        // Only add to aggregate if we have actual history AND a valid displayPerHour
                         if (displayPerHour !== null && displayPerHour !== undefined && !Number.isNaN(displayPerHour)) {
                             collectivePerHourTotals[resourceIdStr] = (collectivePerHourTotals[resourceIdStr] || 0) + displayPerHour;
                         }
