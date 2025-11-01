@@ -430,6 +430,8 @@
                 <div class="info-text">
                     <strong>Note:</strong> Per-hour rates are calculated from per-minute rates (change per minute × 60). 
                     Rates are based on the difference between current and previous contribution totals divided by time elapsed in minutes. 
+                    Rates are smoothed using exponential moving average (EMA) to reduce volatility from short time intervals and bursty activity patterns. 
+                    Short intervals (< 5 min) use stronger smoothing for stability, while longer intervals use lighter smoothing for faster response. 
                     On first load, rates will show "---" until we have at least 2 data points. 
                     If no change is detected on refresh, the last calculated rate is preserved to avoid showing 0/hr. 
                     Auto-refresh updates the page every 15 seconds to show the latest contribution data. 
@@ -550,6 +552,40 @@
         function calculatePerHourFromPerMinute(perMinute) {
             if (perMinute === null) return null;
             return perMinute * 60;
+        }
+        
+        // Smooth per-hour rates using exponential moving average (EMA)
+        // Alpha controls smoothing: lower = more smooth (slower response), higher = less smooth (faster response)
+        // Use adaptive alpha based on time window to handle short intervals better
+        function smoothPerHourRate(newRate, previousRate, minutesElapsed) {
+            if (newRate === null || newRate === undefined || Number.isNaN(newRate)) {
+                return previousRate;
+            }
+            
+            if (previousRate === null || previousRate === undefined || Number.isNaN(previousRate)) {
+                return newRate;
+            }
+            
+            // Adaptive alpha: use lower weight for very short intervals to reduce volatility
+            // For intervals < 5 minutes, use stronger smoothing (lower alpha)
+            // For longer intervals, use less smoothing (higher alpha) to respond faster
+            let alpha;
+            if (minutesElapsed < 5) {
+                // Very short intervals: strong smoothing (alpha = 0.15)
+                alpha = 0.15;
+            } else if (minutesElapsed < 15) {
+                // Short intervals: moderate smoothing (alpha = 0.25)
+                alpha = 0.25;
+            } else if (minutesElapsed < 60) {
+                // Medium intervals: light smoothing (alpha = 0.4)
+                alpha = 0.4;
+            } else {
+                // Long intervals: minimal smoothing (alpha = 0.6) to respond quickly
+                alpha = 0.6;
+            }
+            
+            // Exponential moving average: new_smooth = alpha * new + (1 - alpha) * previous
+            return alpha * newRate + (1 - alpha) * previousRate;
         }
         
         function normalizeShardEvents(events, nowMs = Date.now()) {
@@ -1286,13 +1322,21 @@
                     if (perHour === null || perHour === undefined || Number.isNaN(perHour)) {
                         displayPerHour = null;
                     } else if (perMinute !== null) {
+                        const previousCachedRate = memberRateCache[resourceIdStr];
+                        
                         // If calculated rate is 0 but we have a cached non-zero rate, preserve the cache
-                        if (perHour === 0 && memberRateCache[resourceIdStr] !== undefined && memberRateCache[resourceIdStr] !== 0 && !Number.isNaN(memberRateCache[resourceIdStr])) {
-                            displayPerHour = memberRateCache[resourceIdStr];
+                        if (perHour === 0 && previousCachedRate !== undefined && previousCachedRate !== 0 && !Number.isNaN(previousCachedRate)) {
+                            displayPerHour = previousCachedRate;
                         } else {
-                            // Update cache and use the new calculated rate
-                            memberRateCache[resourceIdStr] = perHour;
-                            displayPerHour = perHour;
+                            // Apply exponential moving average smoothing to reduce volatility
+                            if (previousCachedRate !== undefined && previousCachedRate !== null && !Number.isNaN(previousCachedRate)) {
+                                displayPerHour = smoothPerHourRate(perHour, previousCachedRate, minutesElapsed);
+                            } else {
+                                // First calculation - use the raw rate
+                                displayPerHour = perHour;
+                            }
+                            // Update cache with smoothed rate
+                            memberRateCache[resourceIdStr] = displayPerHour;
                         }
                     } else if (memberRateCache[resourceIdStr] !== undefined) {
                         displayPerHour = memberRateCache[resourceIdStr];
