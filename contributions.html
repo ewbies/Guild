@@ -806,6 +806,7 @@
             previousGuildFunds = {};
             lastFetchTimestamp = null;
             collectivePerHourTotals = {};
+            hasAnyHistory = {};
             guildShardEvents = [];
             memberShardEvents = {};
         }
@@ -1166,8 +1167,10 @@
                 const resourceIdStr = String(resourceId);
                 const currentTotal = currentGuildFunds[resourceIdStr] || 0;
                 const aggregatePerHour = collectivePerHourTotals[resourceIdStr];
-                const hasAggregate = aggregatePerHour !== undefined && aggregatePerHour !== null && !Number.isNaN(aggregatePerHour);
                 const hasActualHistoryForResource = hasAnyHistory[resourceIdStr] === true;
+                // Only consider aggregate valid if we have actual history
+                // If no history, ignore any aggregate value (could be stale from previous render)
+                const hasAggregate = hasActualHistoryForResource && aggregatePerHour !== undefined && aggregatePerHour !== null && !Number.isNaN(aggregatePerHour);
                 const isShard = resourceIdStr === SHARD_RESOURCE_ID;
                 let shardRangeText = '';
                 if (isShard && guildShardSummary && Number.isFinite(guildShardSummary.min) && Number.isFinite(guildShardSummary.max)) {
@@ -1177,9 +1180,10 @@
                         ? `Drop: ${minText}`
                         : `Range: ${minText} - ${maxText}`;
                 }
-                // Only show rate if we have actual history
-                // hasAggregate being true means we have a value, but we need hasActualHistoryForResource to confirm it's from real history
-                const perHourText = (hasAggregate && hasActualHistoryForResource)
+                // Only show rate if we have actual history from server
+                // If hasActualHistoryForResource is false, it means NO members have history, so show "no history yet"
+                // If it's true, we have real history (even if aggregate is 0, which means legitimate zero rates)
+                const perHourText = hasActualHistoryForResource && hasAggregate
                     ? `${formatNumber(aggregatePerHour, showFullValues)}/hour${isShard ? ` (last ${SHARD_RATE_WINDOW_HOURS}h)` : ''}`
                     : (isShard ? '--- (no shard drops yet)' : '--- (no history yet)');
                 
@@ -1363,8 +1367,12 @@
                         hasAnyHistory[resourceIdStr] = true;
                         
                         // Only add to aggregate if we have actual history AND a valid displayPerHour
+                        // Note: We include 0 values because a legitimate 0 rate is still valid data
                         if (displayPerHour !== null && displayPerHour !== undefined && !Number.isNaN(displayPerHour)) {
-                            collectivePerHourTotals[resourceIdStr] = (collectivePerHourTotals[resourceIdStr] || 0) + displayPerHour;
+                            if (!collectivePerHourTotals[resourceIdStr]) {
+                                collectivePerHourTotals[resourceIdStr] = 0;
+                            }
+                            collectivePerHourTotals[resourceIdStr] += displayPerHour;
                         }
                     }
                     
