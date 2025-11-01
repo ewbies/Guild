@@ -400,12 +400,12 @@
 <body>
     <div class="container">
         <div class="header">
-            <a href="index.html" class="nav-button">← Back to Members</a>
+            <a href="index.html" class="nav-button">Back to Members</a>
             <h1>Contributions Tracker</h1>
             <div class="subtitle">Ewbies Guild</div>
             <div style="position: absolute; top: 20px; right: 20px; display: flex; gap: 10px;">
-                <button id="export-html-btn" class="export-button" style="display: none; position: static;">📥 Export HTML</button>
-                <button id="export-pdf-btn" class="export-button" style="display: none; position: static;">📄 Export PDF</button>
+                <button id="export-html-btn" class="export-button" style="display: none; position: static;">Export HTML</button>
+                <button id="export-pdf-btn" class="export-button" style="display: none; position: static;">Export PDF</button>
             </div>
         </div>
         
@@ -421,9 +421,9 @@
                         <span class="status-text" id="last-update">Last update: Just now</span>
                     </div>
                     <div class="button-group">
-                        <button id="toggle-full-btn" class="toggle-button" style="margin-bottom: 0;">📊 Show Full Values</button>
-                        <button id="manual-refresh-btn" class="toggle-button" style="margin-bottom: 0;">🔄 Refresh Now</button>
-                        <button id="reset-data-btn" class="toggle-button" style="margin-bottom: 0;">♻️ Reset Data</button>
+                        <button id="toggle-full-btn" class="toggle-button" style="margin-bottom: 0;">Show Full Values</button>
+                        <button id="manual-refresh-btn" class="toggle-button" style="margin-bottom: 0;">Refresh Now</button>
+                        <button id="reset-data-btn" class="toggle-button" style="margin-bottom: 0;">Reset Data</button>
                     </div>
                 </div>
                 
@@ -892,7 +892,7 @@
             const toggleBtn = document.getElementById('toggle-full-btn');
             toggleBtn.addEventListener('click', () => {
                 showFullValues = !showFullValues;
-                toggleBtn.textContent = showFullValues ? '📊 Show Abbreviated' : '📊 Show Full Values';
+                toggleBtn.textContent = showFullValues ? 'Show Abbreviated' : 'Show Full Values';
                 renderIndividualStats();
                 renderCollectiveStats();
             });
@@ -932,7 +932,7 @@
 
                 const originalText = resetBtn.textContent;
                 resetBtn.disabled = true;
-                resetBtn.textContent = '⏳ Resetting...';
+                resetBtn.textContent = 'Resetting...';
 
                 try {
                     const response = await fetch(`${API_BASE_URL}/api/reset-history`, {
