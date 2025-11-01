@@ -7,6 +7,27 @@ from datetime import datetime
 # Storage for potion history
 POTION_HISTORY_FILE = 'potion_history.json'
 CONTRIBUTION_HISTORY_FILE = 'contribution_history.json'
+SHARD_RESOURCE_ID = '2'
+
+
+def _get_resource_value(container, resource_id):
+    """Safely read a resource value regardless of int or string keys."""
+    if not container:
+        return 0
+
+    if resource_id in container:
+        return container[resource_id]
+
+    resource_id_str = str(resource_id)
+    if resource_id_str in container:
+        return container[resource_id_str]
+
+    try:
+        resource_id_int = int(resource_id_str)
+    except (TypeError, ValueError):
+        return 0
+
+    return container.get(resource_id_int, 0)
 
 def load_potion_history():
     """Load potion history from JSON file"""
@@ -144,6 +165,15 @@ def get_contribution_history(current_data):
     if 'guild_funds' in history:
         history_data['guild_funds'] = history['guild_funds']
         history_data['guild_funds_timestamp'] = history.get('guild_funds_timestamp', history.get('last_update'))
+
+    if 'guild_shard_events' in history:
+        history_data['guild_shard_events'] = list(history.get('guild_shard_events', []))
+
+    if 'member_shard_events' in history:
+        history_data['member_shard_events'] = {
+            member_id: list(events)
+            for member_id, events in history.get('member_shard_events', {}).items()
+        }
     
     for member_id, member in current_members.items():
         member_id_str = str(member_id)
@@ -167,7 +197,16 @@ def update_contribution_history(current_data):
     
     # Initialize history if needed
     if not history:
-        history = {'last_update': now.isoformat(), 'members': {}, 'guild_funds': {}}
+        history = {
+            'last_update': now.isoformat(),
+            'members': {},
+            'guild_funds': {},
+            'member_shard_events': {},
+            'guild_shard_events': []
+        }
+
+    history.setdefault('member_shard_events', {})
+    history.setdefault('guild_shard_events', [])
     
     # Update guild funds snapshot only if values changed
     if 'Funds' in current_data:
@@ -182,6 +221,16 @@ def update_contribution_history(current_data):
                     funds_changed = True
                     break
         
+        if history.get('guild_funds'):
+            previous_shards = _get_resource_value(history.get('guild_funds'), SHARD_RESOURCE_ID)
+            current_shards = _get_resource_value(current_data['Funds'], SHARD_RESOURCE_ID)
+            shard_diff = current_shards - previous_shards
+            if shard_diff > 0.01:
+                history['guild_shard_events'].append({
+                    'timestamp': now.isoformat(),
+                    'amount': shard_diff
+                })
+
         if funds_changed:
             history['guild_funds'] = current_data['Funds'].copy()
             history['guild_funds_timestamp'] = now.isoformat()
@@ -205,6 +254,16 @@ def update_contribution_history(current_data):
         previous_member = history['members'][member_id_str]
         current_contributions = member.get('Contributions', {}).copy()
         previous_contributions = previous_member.get('Contributions', {})
+
+        member_events = history['member_shard_events'].setdefault(member_id_str, [])
+        previous_shards = _get_resource_value(previous_contributions, SHARD_RESOURCE_ID)
+        current_shards = _get_resource_value(current_contributions, SHARD_RESOURCE_ID)
+        shard_diff = current_shards - previous_shards
+        if not is_new_member and shard_diff > 0.01:
+            member_events.append({
+                'timestamp': now.isoformat(),
+                'amount': shard_diff
+            })
         
         # Check if contributions changed
         contributions_changed = False
@@ -235,6 +294,13 @@ def update_contribution_history(current_data):
     save_contribution_history(history)
 
 class GuildHandler(BaseHTTPRequestHandler):
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.end_headers()
+
     def do_GET(self):
         if self.path == '/' or self.path == '/index.html':
             self.send_response(200)
@@ -289,6 +355,27 @@ class GuildHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(response_data)
         
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def do_POST(self):
+        if self.path == '/reset-history':
+            try:
+                save_contribution_history({})
+                save_potion_history({})
+
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({'status': 'reset'}).encode('utf-8'))
+            except Exception as exc:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(exc)}).encode('utf-8'))
         else:
             self.send_response(404)
             self.end_headers()

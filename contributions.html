@@ -172,6 +172,32 @@
             top: 0;
             z-index: 10;
         }
+
+        .members-table th.sortable-header {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .members-table th.sortable-header::after {
+            content: '\2195';
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.85em;
+            color: #FFFFFF;
+            opacity: 0.35;
+        }
+
+        .members-table th.sortable-header.sorted-asc::after {
+            content: '\25B2';
+            opacity: 0.9;
+        }
+
+        .members-table th.sortable-header.sorted-desc::after {
+            content: '\25BC';
+            opacity: 0.9;
+        }
         
         .members-table td {
             padding: 12px 15px;
@@ -436,6 +462,7 @@
                         <button id="toggle-refresh-btn" class="toggle-button" style="margin-bottom: 0;">⏸️ Pause Auto-Refresh</button>
                         <button id="toggle-full-btn" class="toggle-button" style="margin-bottom: 0;">📊 Show Full Values</button>
                         <button id="manual-refresh-btn" class="toggle-button" style="margin-bottom: 0;">🔄 Refresh Now</button>
+                        <button id="reset-data-btn" class="toggle-button" style="margin-bottom: 0;">♻️ Reset Data</button>
                     </div>
                 </div>
                 
@@ -477,26 +504,66 @@
             7: 'Fish'
         };
         
+        const SHARD_RESOURCE_ID = '2';
+        const SHARD_RATE_WINDOW_HOURS = 6;
+        const SHARD_ROLLING_WINDOW_MS = SHARD_RATE_WINDOW_HOURS * 60 * 60 * 1000;
+        const SHARD_HISTORY_RETENTION_MULTIPLIER = 6; // keep 6 windows worth of history client-side
+
         let showFullValues = false;
         let currentMembers = {};
         let contributionHistory = {};
         let currentGuildFunds = {};
         let previousGuildFunds = {};
+        let lastPerHourRates = {};
+        let currentSort = { type: 'name', direction: 'asc', resourceId: null };
         let allResourceIds = [];
         let autoRefreshInterval = null;
         let autoRefreshEnabled = true;
+        let clientHistory = {
+            guildFunds: {},
+            members: {}
+        };
+        let lastFetchTimestamp = null;
+        let collectivePerHourTotals = {};
+        let guildShardEvents = [];
+        let memberShardEvents = {};
         // Load refresh interval from localStorage or default to 1 minute
         let refreshIntervalMs = parseInt(localStorage.getItem('refreshIntervalMs') || '60000', 10);
         
-        function formatNumber(num, useFull = false) {
-            if (useFull) {
-                return num.toLocaleString();
+        function trimTrailingZeros(str) {
+            if (!str.includes('.')) {
+                return str;
             }
-            if (num >= 1e12) return (num / 1e12).toFixed(2) + 'T';
-            if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';
-            if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
-            if (num >= 1e3) return (num / 1e3).toFixed(2) + 'K';
-            return num.toFixed(0);
+            return str
+                .replace(/(\.\d*?[1-9])0+$/u, '$1')
+                .replace(/\.0+$/u, '');
+        }
+
+        function formatWithDigits(num, digits) {
+            if (digits <= 0) {
+                return num.toFixed(0);
+            }
+            return trimTrailingZeros(num.toFixed(digits));
+        }
+
+        function formatNumber(num, useFull = false) {
+            const absNum = Math.abs(num);
+            if (useFull) {
+                return num.toLocaleString(undefined, {
+                    minimumFractionDigits: absNum < 1 ? 2 : 0,
+                    maximumFractionDigits: absNum < 1 ? 4 : 2
+                });
+            }
+            if (absNum >= 1e12) return (num / 1e12).toFixed(2) + 'T';
+            if (absNum >= 1e9) return (num / 1e9).toFixed(2) + 'B';
+            if (absNum >= 1e6) return (num / 1e6).toFixed(2) + 'M';
+            if (absNum >= 1e3) return (num / 1e3).toFixed(2) + 'K';
+            if (absNum >= 100) return formatWithDigits(num, 0);
+            if (absNum >= 10) return formatWithDigits(num, 1);
+            if (absNum >= 1) return formatWithDigits(num, 2);
+            if (absNum >= 0.01) return formatWithDigits(num, 3);
+            if (absNum === 0) return '0';
+            return formatWithDigits(num, 4);
         }
         
         function calculatePerMinute(currentValue, previousValue, minutesElapsed, hasHistory = true) {
@@ -518,6 +585,227 @@
             return perMinute * 60;
         }
         
+        function normalizeShardEvents(events, nowMs = Date.now()) {
+            if (!Array.isArray(events)) {
+                return [];
+            }
+
+            const retentionCutoff = nowMs - SHARD_ROLLING_WINDOW_MS * SHARD_HISTORY_RETENTION_MULTIPLIER;
+
+            return events
+                .map((event) => {
+                    const timestamp = new Date(event.timestamp || event.time || event.ts || 0).getTime();
+                    const amount = Number(event.amount ?? event.value ?? 0);
+
+                    if (!Number.isFinite(timestamp) || !Number.isFinite(amount) || amount <= 0) {
+                        return null;
+                    }
+
+                    return {
+                        timestampMs: timestamp,
+                        amount,
+                    };
+                })
+                .filter((event) => event && event.timestampMs >= retentionCutoff)
+                .sort((a, b) => a.timestampMs - b.timestampMs);
+        }
+
+        function summarizeShardWindow(events, nowMs = Date.now()) {
+            if (!Array.isArray(events) || events.length === 0) {
+                return null;
+            }
+
+            const cutoff = nowMs - SHARD_ROLLING_WINDOW_MS;
+            let total = 0;
+            let earliestIncluded = null;
+            let minDrop = null;
+            let maxDrop = null;
+            let includedCount = 0;
+
+            for (let idx = events.length - 1; idx >= 0; idx -= 1) {
+                const event = events[idx];
+                const ts = event.timestampMs ?? new Date(event.timestamp).getTime();
+
+                if (!Number.isFinite(ts) || ts < cutoff) {
+                    if (ts < cutoff) {
+                        break;
+                    }
+                    continue;
+                }
+
+                const amount = Number(event.amount ?? 0);
+                if (!Number.isFinite(amount) || amount <= 0) {
+                    continue;
+                }
+
+                includedCount += 1;
+                total += amount;
+                if (earliestIncluded === null || ts < earliestIncluded) {
+                    earliestIncluded = ts;
+                }
+
+                if (minDrop === null || amount < minDrop) {
+                    minDrop = amount;
+                }
+
+                if (maxDrop === null || amount > maxDrop) {
+                    maxDrop = amount;
+                }
+            }
+
+            if (!includedCount || earliestIncluded === null || total <= 0) {
+                return null;
+            }
+
+            const effectiveStart = Math.max(earliestIncluded, cutoff);
+            const durationMs = Math.max(nowMs - effectiveStart, 1);
+            const durationHours = durationMs / 3_600_000;
+
+            if (!Number.isFinite(durationHours) || durationHours <= 0) {
+                return null;
+            }
+
+            return {
+                perHour: total / durationHours,
+                min: minDrop,
+                max: maxDrop,
+                total,
+                eventCount: includedCount,
+                windowStartMs: effectiveStart,
+                windowEndMs: nowMs
+            };
+        }
+
+        function calculateShardPerHour(events, nowMs = Date.now()) {
+            const summary = summarizeShardWindow(events, nowMs);
+            return summary ? summary.perHour : null;
+        }
+
+        function applyShardHistoryFromContribution(history) {
+            const nowMs = Date.now();
+
+            guildShardEvents = normalizeShardEvents(history.guild_shard_events || [], nowMs);
+
+            const rawMemberEvents = history.member_shard_events || {};
+            memberShardEvents = {};
+            Object.keys(rawMemberEvents).forEach((memberId) => {
+                memberShardEvents[memberId] = normalizeShardEvents(rawMemberEvents[memberId], nowMs);
+            });
+        }
+
+        function getMemberShardEvents(memberId) {
+            const key = String(memberId);
+            return memberShardEvents[key] || [];
+        }
+
+        function getClientRate(type, identifier, resourceId, currentValue, timestamp) {
+            const effectiveTimestamp = Number.isFinite(timestamp) ? timestamp : Date.now();
+            let container;
+
+            if (type === 'guild') {
+                container = clientHistory.guildFunds;
+            } else {
+                const memberKey = String(identifier);
+                if (!clientHistory.members[memberKey]) {
+                    clientHistory.members[memberKey] = {};
+                }
+                container = clientHistory.members[memberKey];
+            }
+
+            const entry = container[resourceId];
+            if (entry && entry.timestamp === effectiveTimestamp) {
+                return {
+                    perMinute: entry.lastPerMinute ?? null,
+                    diff: 0,
+                    hadHistory: true
+                };
+            }
+
+            let perMinute = null;
+            let diff = 0;
+
+            if (entry && entry.timestamp && effectiveTimestamp > entry.timestamp) {
+                const elapsedMinutes = (effectiveTimestamp - entry.timestamp) / (1000 * 60);
+                if (elapsedMinutes > 0) {
+                    diff = currentValue - entry.value;
+                    if (diff > 0) {
+                        perMinute = diff / elapsedMinutes;
+                    } else {
+                        perMinute = 0;
+                    }
+                }
+            }
+
+            container[resourceId] = {
+                value: currentValue,
+                timestamp: effectiveTimestamp,
+                lastPerMinute: perMinute !== null ? perMinute : (entry ? entry.lastPerMinute ?? null : null)
+            };
+
+            return {
+                perMinute,
+                diff,
+                hadHistory: !!entry
+            };
+        }
+
+        function updateClientLastPerMinute(type, identifier, resourceId, perMinute) {
+            if (perMinute === null || perMinute === undefined) {
+                return;
+            }
+
+            let container;
+            if (type === 'guild') {
+                container = clientHistory.guildFunds;
+            } else {
+                const memberKey = String(identifier);
+                if (!clientHistory.members[memberKey]) {
+                    clientHistory.members[memberKey] = {};
+                }
+                container = clientHistory.members[memberKey];
+            }
+
+            if (!container[resourceId]) {
+                container[resourceId] = {
+                    value: 0,
+                    timestamp: Number.isFinite(lastFetchTimestamp) ? lastFetchTimestamp : Date.now(),
+                    lastPerMinute: perMinute
+                };
+            } else {
+                container[resourceId].lastPerMinute = perMinute;
+            }
+        }
+
+        function cleanupClientHistory() {
+            const activeMemberIds = new Set(Object.keys(currentMembers || {}).map(id => String(id)));
+
+            Object.keys(clientHistory.members).forEach(memberId => {
+                if (!activeMemberIds.has(memberId)) {
+                    delete clientHistory.members[memberId];
+                }
+            });
+
+            Object.keys(lastPerHourRates).forEach(memberId => {
+                if (!activeMemberIds.has(memberId)) {
+                    delete lastPerHourRates[memberId];
+                }
+            });
+        }
+
+        function resetClientHistoryCaches() {
+            clientHistory = {
+                guildFunds: {},
+                members: {}
+            };
+            lastPerHourRates = {};
+            contributionHistory = {};
+            previousGuildFunds = {};
+            lastFetchTimestamp = null;
+            collectivePerHourTotals = {};
+            guildShardEvents = [];
+            memberShardEvents = {};
+        }
+
         async function fetchGuildData() {
             const loadingEl = document.getElementById('loading');
             const errorEl = document.getElementById('error');
@@ -560,6 +848,8 @@
             currentMembers = data.Members;
             currentGuildFunds = data.Funds || {};
             previousGuildFunds = contributionHistory.guild_funds || {};
+            applyShardHistoryFromContribution(contributionHistory);
+            cleanupClientHistory();
             
             // Define resource display order: Mana Dust, Elemental Shards, Guild XP, Wood, Iron, Fish
             const RESOURCE_ORDER = [1, 2, 42, 8, 9, 7];
@@ -614,6 +904,9 @@
             
             // Set up manual refresh
             setupManualRefresh();
+
+            // Set up reset functionality
+            setupResetData();
             
             // Set up export functionality
             setupExport(data.Name || 'Ewbies');
@@ -623,8 +916,9 @@
             document.getElementById('export-pdf-btn').style.display = 'block';
             
             // Render everything
-            renderCollectiveStats();
+            lastFetchTimestamp = Date.now();
             renderIndividualStats();
+            renderCollectiveStats();
             
             // Update last update time
             updateLastUpdateTime();
@@ -645,8 +939,8 @@
             toggleBtn.addEventListener('click', () => {
                 showFullValues = !showFullValues;
                 toggleBtn.textContent = showFullValues ? '📊 Show Abbreviated' : '📊 Show Full Values';
-                renderCollectiveStats();
                 renderIndividualStats();
+                renderCollectiveStats();
             });
         }
         
@@ -654,6 +948,7 @@
             const searchBar = document.getElementById('search-bar');
             searchBar.addEventListener('input', (e) => {
                 renderIndividualStats(e.target.value.toLowerCase().trim());
+                renderCollectiveStats();
             });
         }
         
@@ -695,6 +990,48 @@
             const manualRefreshBtn = document.getElementById('manual-refresh-btn');
             manualRefreshBtn.addEventListener('click', () => {
                 refreshData(true);
+            });
+        }
+
+        function setupResetData() {
+            const resetBtn = document.getElementById('reset-data-btn');
+            if (!resetBtn) return;
+
+            resetBtn.addEventListener('click', async () => {
+                const confirmed = window.confirm('Resetting will clear stored history so rates recalculate from scratch on the next refresh. Continue?');
+                if (!confirmed) {
+                    return;
+                }
+
+                const originalText = resetBtn.textContent;
+                resetBtn.disabled = true;
+                resetBtn.textContent = '⏳ Resetting...';
+
+                try {
+                    const response = await fetch('reset-history', {
+                        method: 'POST'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to reset data on the server');
+                    }
+
+                    resetClientHistoryCaches();
+
+                    const errorEl = document.getElementById('error');
+                    if (errorEl) {
+                        errorEl.style.display = 'none';
+                        errorEl.textContent = '';
+                    }
+
+                    await refreshData(true);
+                } catch (error) {
+                    console.error('Error resetting data:', error);
+                    showError(error.message || 'Failed to reset data');
+                } finally {
+                    resetBtn.disabled = false;
+                    resetBtn.textContent = originalText;
+                }
             });
         }
         
@@ -808,6 +1145,8 @@
                 currentMembers = data.Members;
                 currentGuildFunds = data.Funds || {};
                 previousGuildFunds = contributionHistory.guild_funds || {};
+                applyShardHistoryFromContribution(contributionHistory);
+                cleanupClientHistory();
                 
                 // Check if data actually changed
                 const dataChanged = hasDataChanged(data.Members, data.contribution_history || {});
@@ -847,8 +1186,9 @@
                 // Re-render with current search term (always update display to show current values)
                 const searchBar = document.getElementById('search-bar');
                 const searchTerm = searchBar ? searchBar.value.toLowerCase().trim() : '';
-                renderCollectiveStats();
+                lastFetchTimestamp = Date.now();
                 renderIndividualStats(searchTerm);
+                renderCollectiveStats();
                 
                 // Update last update time if data changed or manual refresh
                 if (dataChanged || isManual) {
@@ -869,21 +1209,6 @@
             }
         }
         
-        function getGuildFundsMinutesElapsed() {
-            // Get time elapsed since last guild funds update
-            const defaultMinutes = 60;
-            
-            if (contributionHistory.guild_funds_timestamp) {
-                const previousTime = new Date(contributionHistory.guild_funds_timestamp);
-                const now = new Date();
-                const diffMs = now - previousTime;
-                const diffMinutes = diffMs / (1000 * 60);
-                return Math.max(diffMinutes, 0.1);
-            }
-            
-            return defaultMinutes;
-        }
-        
         function renderCollectiveStats() {
             const container = document.getElementById('collective-stats');
             container.innerHTML = '';
@@ -897,17 +1222,26 @@
                 });
             }
             
-            // Use guild funds instead of summing member contributions
-            const guildFundsMinutesElapsed = getGuildFundsMinutesElapsed();
-            const hasGuildFundsHistory = Object.keys(previousGuildFunds).length > 0;
-            
-            // Render stat cards using guild funds
+            const nowMs = Date.now();
+            const guildShardSummary = summarizeShardWindow(guildShardEvents, nowMs);
+
             allResourceIds.forEach(resourceId => {
                 const resourceIdStr = String(resourceId);
                 const currentTotal = currentGuildFunds[resourceIdStr] || 0;
-                const previousTotal = (previousGuildFunds && previousGuildFunds[resourceIdStr]) || 0;
-                const perMinute = calculatePerMinute(currentTotal, previousTotal, guildFundsMinutesElapsed, hasGuildFundsHistory);
-                const perHour = calculatePerHourFromPerMinute(perMinute);
+                const aggregatePerHour = collectivePerHourTotals[resourceIdStr];
+                const hasAggregate = aggregatePerHour !== undefined && aggregatePerHour !== null && !Number.isNaN(aggregatePerHour);
+                const isShard = resourceIdStr === SHARD_RESOURCE_ID;
+                let shardRangeText = '';
+                if (isShard && guildShardSummary && Number.isFinite(guildShardSummary.min) && Number.isFinite(guildShardSummary.max)) {
+                    const minText = formatNumber(guildShardSummary.min, showFullValues);
+                    const maxText = formatNumber(guildShardSummary.max, showFullValues);
+                    shardRangeText = guildShardSummary.min === guildShardSummary.max
+                        ? `Drop: ${minText}`
+                        : `Range: ${minText} - ${maxText}`;
+                }
+                const perHourText = hasAggregate
+                    ? `${formatNumber(aggregatePerHour, showFullValues)}/hour${isShard ? ` (last ${SHARD_RATE_WINDOW_HOURS}h)` : ''}`
+                    : (isShard ? '--- (no shard drops yet)' : '--- (no history yet)');
                 
                 const card = document.createElement('div');
                 card.className = 'stat-card';
@@ -915,7 +1249,8 @@
                     <div class="stat-card-title">${RESOURCE_NAMES[resourceId] || 'Unknown Resource'}</div>
                     <div class="stat-card-value">${formatNumber(Math.abs(currentTotal), showFullValues)}</div>
                     <div class="stat-card-subvalue">
-                        ${perHour !== null ? formatNumber(perHour, showFullValues) + '/hour' : 'No history yet (waiting for next update)'}
+                        ${perHourText}
+                        ${isShard && shardRangeText ? `<br><span class="text-foreground/50 text-xs">${shardRangeText}</span>` : ''}
                     </div>
                 `;
                 container.appendChild(card);
@@ -934,7 +1269,7 @@
                 
                 if (currentGuildFunds) {
                     Object.keys(currentGuildFunds).forEach(id => {
-                        const resourceId = parseInt(id);
+                        const resourceId = parseInt(id, 10);
                         if (resourceId !== 3) resourceSet.add(resourceId);
                     });
                 }
@@ -942,7 +1277,7 @@
                 Object.values(currentMembers).forEach(member => {
                     if (member.Contributions) {
                         Object.keys(member.Contributions).forEach(id => {
-                            const resourceId = parseInt(id);
+                            const resourceId = parseInt(id, 10);
                             if (resourceId !== 3) resourceSet.add(resourceId);
                         });
                     }
@@ -956,59 +1291,220 @@
                 searchTerm = searchBar ? searchBar.value.toLowerCase().trim() : '';
             }
             
-            // Build header
-            header.innerHTML = '<th>Member Name</th>';
+            const normalizedSearchTerm = searchTerm;
+            
+            // Build header with sortable columns
+            header.innerHTML = '';
+            const nameHeader = document.createElement('th');
+            nameHeader.textContent = 'Member Name';
+            nameHeader.classList.add('sortable-header');
+            if (currentSort.type === 'name') {
+                nameHeader.classList.add(currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
+            }
+            nameHeader.addEventListener('click', () => handleSortClick('name'));
+            header.appendChild(nameHeader);
+            
             allResourceIds.forEach(resourceId => {
-                header.innerHTML += `<th>${RESOURCE_NAMES[resourceId] || 'Unknown'}<br><small>(Per Hour)</small></th>`;
+                const headerCell = document.createElement('th');
+                headerCell.innerHTML = `${RESOURCE_NAMES[resourceId] || 'Unknown'}<br><small>(Per Hour)</small>`;
+                headerCell.classList.add('sortable-header');
+                if (currentSort.type === 'resource' && currentSort.resourceId === resourceId) {
+                    headerCell.classList.add(currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
+                }
+                headerCell.addEventListener('click', () => handleSortClick('resource', resourceId));
+                header.appendChild(headerCell);
             });
             
-            // Filter members
-            let membersToShow = Object.values(currentMembers);
-            if (searchTerm) {
-                membersToShow = membersToShow.filter(member => 
-                    member.Name.toLowerCase().includes(searchTerm)
-                );
-            }
-            
-            // Sort by name
-            membersToShow.sort((a, b) => a.Name.localeCompare(b.Name));
-            
-            // Build rows
-            body.innerHTML = '';
-            membersToShow.forEach(member => {
-                const row = document.createElement('tr');
-                
-                // Get minutes elapsed for this specific member
+            collectivePerHourTotals = {};
+
+            const renderNowMs = Date.now();
+            const allMembers = Object.values(currentMembers);
+
+            const allMemberStats = allMembers.map(member => {
                 const minutesElapsed = getMinutesElapsed(member.ID);
+                const resourceStats = {};
+                const nowMs = renderNowMs;
                 
-                // Member name
-                let rowHTML = `<td class="member-name">${member.Name}</td>`;
-                
-                // Contributions per resource
                 allResourceIds.forEach(resourceId => {
-                    // Use actual values (can be negative for withdrawals)
                     const resourceIdStr = String(resourceId);
                     const currentValue = member.Contributions?.[resourceIdStr] || 0;
+
+                    if (resourceIdStr === SHARD_RESOURCE_ID) {
+                        const shardEvents = getMemberShardEvents(member.ID);
+                        const shardSummary = summarizeShardWindow(shardEvents, nowMs);
+                        const shardPerHour = shardSummary?.perHour ?? null;
+                        const shardDisplayPerHour = Number.isFinite(shardPerHour) ? shardPerHour : null;
+
+                        if (shardDisplayPerHour !== null) {
+                            collectivePerHourTotals[resourceIdStr] = (collectivePerHourTotals[resourceIdStr] || 0) + shardDisplayPerHour;
+                        }
+
+                        let shardExtraText = '';
+                        if (shardSummary && Number.isFinite(shardSummary.min) && Number.isFinite(shardSummary.max)) {
+                            const minText = formatNumber(shardSummary.min, showFullValues);
+                            const maxText = formatNumber(shardSummary.max, showFullValues);
+                            shardExtraText = shardSummary.min === shardSummary.max
+                                ? `Drop: ${minText}`
+                                : `Range: ${minText} - ${maxText}`;
+                        }
+
+                        resourceStats[resourceIdStr] = {
+                            currentValue,
+                            perHour: shardPerHour,
+                            displayPerHour: shardDisplayPerHour,
+                            rateText: shardPerHour === null
+                                ? '--- (no shard drops yet)'
+                                : `${formatNumber(shardDisplayPerHour ?? 0, showFullValues)}/hr (last ${SHARD_RATE_WINDOW_HOURS}h)`,
+                            extraText: shardExtraText
+                        };
+
+                        return;
+                    }
+
                     const previousHistory = contributionHistory[member.ID];
                     const previousValue = (previousHistory && previousHistory.Contributions && previousHistory.Contributions[resourceIdStr]) || 0;
                     const hasHistory = !!previousHistory && !!previousHistory.last_update;
-                    const perMinute = calculatePerMinute(currentValue, previousValue, minutesElapsed, hasHistory);
+                    const clientRate = getClientRate('member', member.ID, resourceIdStr, currentValue, lastFetchTimestamp);
+                    let diff = clientRate.diff;
+                    let perMinute = clientRate.perMinute;
+
+                    if (perMinute === null) {
+                        diff = currentValue - previousValue;
+                        perMinute = calculatePerMinute(currentValue, previousValue, minutesElapsed, hasHistory);
+                    }
+
                     const perHour = calculatePerHourFromPerMinute(perMinute);
-                    
+                    updateClientLastPerMinute('member', member.ID, resourceIdStr, perMinute);
+
+                    if (!lastPerHourRates[member.ID]) {
+                        lastPerHourRates[member.ID] = {};
+                    }
+
+                    const memberRateCache = lastPerHourRates[member.ID];
+                    let displayPerHour = perHour;
+
+                    if (perHour === null) {
+                        displayPerHour = null;
+                    } else if (diff > 0) {
+                        memberRateCache[resourceIdStr] = perHour;
+                        displayPerHour = perHour;
+                    } else if (diff === 0) {
+                        if (memberRateCache[resourceIdStr] !== undefined) {
+                            displayPerHour = memberRateCache[resourceIdStr];
+                        } else {
+                            displayPerHour = perHour;
+                        }
+                    } else {
+                        memberRateCache[resourceIdStr] = 0;
+                        displayPerHour = 0;
+                    }
+
+                    if (displayPerHour !== null && displayPerHour !== undefined && !Number.isNaN(displayPerHour)) {
+                        collectivePerHourTotals[resourceIdStr] = (collectivePerHourTotals[resourceIdStr] || 0) + displayPerHour;
+                    }
+
+                    resourceStats[resourceIdStr] = {
+                        currentValue,
+                        perHour,
+                        displayPerHour,
+                        rateText: perHour === null
+                            ? '--- (no history)'
+                            : formatNumber(displayPerHour ?? 0, showFullValues) + '/hr',
+                        extraText: ''
+                    };
+                });
+
+                return {
+                    member,
+                    resourceStats
+                };
+            });
+
+            const guildShardSummary = summarizeShardWindow(guildShardEvents, renderNowMs);
+            const guildShardPerHour = guildShardSummary?.perHour ?? null;
+            if (guildShardPerHour === null) {
+                delete collectivePerHourTotals[SHARD_RESOURCE_ID];
+            } else {
+                collectivePerHourTotals[SHARD_RESOURCE_ID] = guildShardPerHour;
+            }
+
+            let memberStats = allMemberStats;
+            if (normalizedSearchTerm) {
+                const term = normalizedSearchTerm;
+                memberStats = memberStats.filter(({ member }) =>
+                    member.Name.toLowerCase().includes(term)
+                );
+            }
+
+            const multiplier = currentSort.direction === 'asc' ? 1 : -1;
+
+            memberStats.sort((a, b) => {
+                if (currentSort.type === 'name') {
+                    return multiplier * a.member.Name.localeCompare(b.member.Name);
+                }
+
+                const resourceIdStr = String(currentSort.resourceId);
+                const aStat = a.resourceStats[resourceIdStr];
+                const bStat = b.resourceStats[resourceIdStr];
+                const fallbackValue = currentSort.direction === 'asc' ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
+
+                const aValue = (aStat && aStat.displayPerHour !== null && aStat.displayPerHour !== undefined && !Number.isNaN(aStat.displayPerHour))
+                    ? aStat.displayPerHour
+                    : fallbackValue;
+                const bValue = (bStat && bStat.displayPerHour !== null && bStat.displayPerHour !== undefined && !Number.isNaN(bStat.displayPerHour))
+                    ? bStat.displayPerHour
+                    : fallbackValue;
+
+                if (aValue === bValue) {
+                    return a.member.Name.localeCompare(b.member.Name);
+                }
+
+                return aValue > bValue ? multiplier : -multiplier;
+            });
+
+            // Build rows
+            body.innerHTML = '';
+            memberStats.forEach(({ member, resourceStats }) => {
+                const row = document.createElement('tr');
+                let rowHTML = `<td class="member-name">${member.Name}</td>`;
+
+                allResourceIds.forEach(resourceId => {
+                    const resourceIdStr = String(resourceId);
+                    const stats = resourceStats[resourceIdStr];
+                    const extraTextHtml = stats.extraText
+                        ? `<br><span class="text-foreground/50 text-xs">${stats.extraText}</span>`
+                        : '';
+
                     rowHTML += `
                         <td class="resource-value">
-                            ${formatNumber(Math.abs(currentValue), showFullValues)}
+                            ${formatNumber(Math.abs(stats.currentValue), showFullValues)}
                             <br>
-                            <span class="per-hour">${perHour !== null ? formatNumber(perHour, showFullValues) + '/hr' : '--- (no history)'}</span>
+                            <span class="per-hour">${stats.rateText}</span>
+                            ${extraTextHtml}
                         </td>
                     `;
                 });
-                
+
                 row.innerHTML = rowHTML;
                 body.appendChild(row);
             });
         }
         
+        function handleSortClick(type, resourceId = null) {
+            if (currentSort.type === type && currentSort.resourceId === resourceId) {
+                currentSort.direction = currentSort.direction === 'desc' ? 'asc' : 'desc';
+            } else {
+                currentSort.type = type;
+                currentSort.resourceId = resourceId;
+                currentSort.direction = type === 'name' ? 'asc' : 'desc';
+            }
+
+            const searchBar = document.getElementById('search-bar');
+            const searchTerm = searchBar ? searchBar.value.toLowerCase().trim() : '';
+            renderIndividualStats(searchTerm);
+            renderCollectiveStats();
+        }
+
         function getMinutesElapsed(memberId = null) {
             // Try to get last update time from history
             const defaultMinutes = 60; // Default to 1 hour = 60 minutes if no history
@@ -1094,24 +1590,35 @@
         }
         
         function generateStaticHTML(guildName) {
-            const guildFundsMinutesElapsed = getGuildFundsMinutesElapsed();
-            const hasGuildFundsHistory = Object.keys(previousGuildFunds).length > 0;
-            
             // Generate collective stats HTML
             let collectiveHTML = '';
+            const exportNowMs = Date.now();
+            const exportGuildShardSummary = summarizeShardWindow(guildShardEvents, exportNowMs);
             allResourceIds.forEach(resourceId => {
                 const resourceIdStr = String(resourceId);
                 const currentTotal = currentGuildFunds[resourceIdStr] || 0;
-                const previousTotal = (previousGuildFunds && previousGuildFunds[resourceIdStr]) || 0;
-                const perMinute = calculatePerMinute(currentTotal, previousTotal, guildFundsMinutesElapsed, hasGuildFundsHistory);
-                const perHour = calculatePerHourFromPerMinute(perMinute);
+                const aggregatePerHour = collectivePerHourTotals[resourceIdStr];
+                const hasAggregate = aggregatePerHour !== undefined && aggregatePerHour !== null && !Number.isNaN(aggregatePerHour);
+                const isShard = resourceIdStr === SHARD_RESOURCE_ID;
+                let shardRangeText = '';
+                if (isShard && exportGuildShardSummary && Number.isFinite(exportGuildShardSummary.min) && Number.isFinite(exportGuildShardSummary.max)) {
+                    const minText = formatNumber(exportGuildShardSummary.min, showFullValues);
+                    const maxText = formatNumber(exportGuildShardSummary.max, showFullValues);
+                    shardRangeText = exportGuildShardSummary.min === exportGuildShardSummary.max
+                        ? `Drop: ${minText}`
+                        : `Range: ${minText} - ${maxText}`;
+                }
+                const perHourText = hasAggregate
+                    ? `${formatNumber(aggregatePerHour, showFullValues)}/hour${isShard ? ` (last ${SHARD_RATE_WINDOW_HOURS}h)` : ''}`
+                    : (isShard ? '--- (no shard drops yet)' : '--- (no history yet)');
                 
                 collectiveHTML += `
                     <div class="stat-card">
                         <div class="stat-card-title">${RESOURCE_NAMES[resourceId] || 'Unknown Resource'}</div>
                         <div class="stat-card-value">${formatNumber(Math.abs(currentTotal), showFullValues)}</div>
                         <div class="stat-card-subvalue">
-                            ${perHour !== null ? formatNumber(perHour, showFullValues) + '/hour' : 'No history yet'}
+                            ${perHourText}
+                            ${isShard && shardRangeText ? `<br><span class="text-foreground/50 text-xs">${shardRangeText}</span>` : ''}
                         </div>
                     </div>
                 `;
@@ -1123,24 +1630,51 @@
             
             membersArray.forEach(member => {
                 const minutesElapsed = getMinutesElapsed(member.ID);
+                const memberNowMs = exportNowMs;
                 let rowHTML = `<tr><td class="member-name">${member.Name}</td>`;
                 
                 allResourceIds.forEach(resourceId => {
                     const resourceIdStr = String(resourceId);
                     const currentValue = member.Contributions?.[resourceIdStr] || 0;
-                    const previousHistory = contributionHistory[member.ID];
-                    const previousValue = (previousHistory && previousHistory.Contributions && previousHistory.Contributions[resourceIdStr]) || 0;
-                    const hasHistory = !!previousHistory && !!previousHistory.last_update;
-                    const perMinute = calculatePerMinute(currentValue, previousValue, minutesElapsed, hasHistory);
-                    const perHour = calculatePerHourFromPerMinute(perMinute);
-                    
-                    rowHTML += `
-                        <td class="resource-value">
-                            ${formatNumber(Math.abs(currentValue), showFullValues)}
-                            <br>
-                            <span class="per-hour">${perHour !== null ? formatNumber(perHour, showFullValues) + '/hr' : '--- (no history)'}</span>
-                        </td>
-                    `;
+                    if (resourceIdStr === SHARD_RESOURCE_ID) {
+                        const shardEvents = getMemberShardEvents(member.ID);
+                        const shardSummary = summarizeShardWindow(shardEvents, memberNowMs);
+                        const shardPerHour = shardSummary?.perHour ?? null;
+                        const perHourText = shardPerHour !== null
+                            ? `${formatNumber(shardPerHour, showFullValues)}/hr (last ${SHARD_RATE_WINDOW_HOURS}h)`
+                            : '--- (no shard drops yet)';
+                        let shardRangeText = '';
+                        if (shardSummary && Number.isFinite(shardSummary.min) && Number.isFinite(shardSummary.max)) {
+                            const minText = formatNumber(shardSummary.min, showFullValues);
+                            const maxText = formatNumber(shardSummary.max, showFullValues);
+                            shardRangeText = shardSummary.min === shardSummary.max
+                                ? `Drop: ${minText}`
+                                : `Range: ${minText} - ${maxText}`;
+                        }
+
+                        rowHTML += `
+                            <td class="resource-value">
+                                ${formatNumber(Math.abs(currentValue), showFullValues)}
+                                <br>
+                                <span class="per-hour">${perHourText}</span>
+                                ${shardRangeText ? `<br><span class="text-foreground/50 text-xs">${shardRangeText}</span>` : ''}
+                            </td>
+                        `;
+                    } else {
+                        const previousHistory = contributionHistory[member.ID];
+                        const previousValue = (previousHistory && previousHistory.Contributions && previousHistory.Contributions[resourceIdStr]) || 0;
+                        const hasHistory = !!previousHistory && !!previousHistory.last_update;
+                        const perMinute = calculatePerMinute(currentValue, previousValue, minutesElapsed, hasHistory);
+                        const perHour = calculatePerHourFromPerMinute(perMinute);
+                        
+                        rowHTML += `
+                            <td class="resource-value">
+                                ${formatNumber(Math.abs(currentValue), showFullValues)}
+                                <br>
+                                <span class="per-hour">${perHour !== null ? formatNumber(perHour, showFullValues) + '/hr' : '--- (no history)'}</span>
+                            </td>
+                        `;
+                    }
                 });
                 
                 rowHTML += '</tr>';
