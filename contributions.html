@@ -1352,22 +1352,13 @@
                     const previousHistory = contributionHistory[member.ID];
                     const previousValue = (previousHistory && previousHistory.Contributions && previousHistory.Contributions[resourceIdStr]) || 0;
                     const hasHistory = !!previousHistory && !!previousHistory.last_update;
-                    const clientRate = getClientRate('member', member.ID, resourceIdStr, currentValue, lastFetchTimestamp);
                     const hadResourcePreviously = !!previousHistory
                         && !!previousHistory.Contributions
                         && Object.prototype.hasOwnProperty.call(previousHistory.Contributions, resourceIdStr);
 
-                    let diff = clientRate.diff;
-                    let perMinute = clientRate.perMinute;
-
-                    if (perMinute === null) {
-                        if (hasHistory && hadResourcePreviously) {
-                            diff = currentValue - previousValue;
-                            perMinute = calculatePerMinute(currentValue, previousValue, minutesElapsed, true);
-                        } else {
-                            diff = 0;
-                            perMinute = null;
-                        }
+                    let perMinute = null;
+                    if (hasHistory && hadResourcePreviously) {
+                        perMinute = calculatePerMinute(currentValue, previousValue, minutesElapsed, true);
                     }
 
                     const perHour = calculatePerHourFromPerMinute(perMinute);
@@ -1380,9 +1371,9 @@
                     const memberRateCache = lastPerHourRates[member.ID];
                     let displayPerHour = perHour;
 
-                    if (perHour === null || Number.isNaN(perHour)) {
+                    if (perHour === null || perHour === undefined || Number.isNaN(perHour)) {
                         displayPerHour = null;
-                    } else if (diff !== 0) {
+                    } else if (perMinute !== null) {
                         memberRateCache[resourceIdStr] = perHour;
                         displayPerHour = perHour;
                     } else if (memberRateCache[resourceIdStr] !== undefined) {
