@@ -531,38 +531,10 @@
         let refreshIntervalMs = parseInt(localStorage.getItem('refreshIntervalMs') || '60000', 10);
 
         const GUILD_ID = 4;
-        const API_KEY = '5ab36da0-b83b-4362-8cd8-bc5a40b6d939';
-        const WORKER_BASE_URL = 'https://ewbies-guild-api.widers.workers.dev';
-
-        function resolveApiEndpoint() {
-            if (typeof window !== 'undefined') {
-                const hostname = window.location.hostname;
-
-                if (window.GUILD_API_MODE === 'local') {
-                    return { baseUrl: window.GUILD_API_BASE_URL || 'http://localhost:8000', usesWorker: false };
-                }
-
-                if (hostname === 'localhost' || hostname === '127.0.0.1') {
-                    return { baseUrl: 'http://localhost:8000', usesWorker: false };
-                }
-
-                if (window.GUILD_API_BASE_URL) {
-                    return { baseUrl: window.GUILD_API_BASE_URL, usesWorker: true };
-                }
-            }
-
-            return { baseUrl: WORKER_BASE_URL, usesWorker: true };
-        }
-
-        const API_ENDPOINT = resolveApiEndpoint();
-        const API_BASE_URL = API_ENDPOINT.baseUrl.replace(/\/$/, '');
-        const USES_WORKER_API = API_ENDPOINT.usesWorker;
+        const API_BASE_URL = 'https://ewbies-guild-api.widers.workers.dev';
 
         function buildGuildApiUrl(guildId) {
-            if (USES_WORKER_API) {
-                return `${API_BASE_URL}/api/guild/${guildId}`;
-            }
-            return `${API_BASE_URL}/api/guild/${guildId}?apikey=${API_KEY}`;
+            return `${API_BASE_URL}/api/guild/${guildId}`;
         }
         
         function trimTrailingZeros(str) {
@@ -850,25 +822,15 @@
             errorEl.style.display = 'none';
             contentArea.style.display = 'none';
             
-            let data;
-            try {
-                const url = buildGuildApiUrl(GUILD_ID);
-                const response = await fetch(url);
-                
-                if (response.ok) {
-                    data = await response.json();
-                } else {
-                    throw new Error('API server not available');
-                }
-            } catch (apiError) {
-                const localResponse = await fetch('test_response.json');
-                if (localResponse.ok) {
-                    data = await localResponse.json();
-                } else {
-                    throw new Error('No data source available');
-                }
+            const url = buildGuildApiUrl(GUILD_ID);
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                throw new Error('Guild API request failed');
             }
-            
+
+            const data = await response.json();
+
             loadingEl.style.display = 'none';
             
             if (!data.Members) {
@@ -1028,17 +990,16 @@
         function setupResetData() {
             const resetBtn = document.getElementById('reset-data-btn');
             if (!resetBtn) return;
-
-            if (USES_WORKER_API) {
-                resetBtn.disabled = true;
-                resetBtn.style.opacity = '0.5';
-                resetBtn.title = 'Reset is only available when using the local API server.';
-                return;
-            }
+            resetBtn.title = 'Clears the shared guild history stored by the worker.';
 
             resetBtn.addEventListener('click', async () => {
-                const confirmed = window.confirm('Resetting will clear stored history so rates recalculate from scratch on the next refresh. Continue?');
-                if (!confirmed) {
+                const firstConfirm = window.confirm('Resetting will clear stored history so rates recalculate from scratch on the next refresh. Continue?');
+                if (!firstConfirm) {
+                    return;
+                }
+
+                const secondConfirm = window.confirm('This affects everyone viewing the dashboard. Click OK again to reset, or Cancel to keep the current history.');
+                if (!secondConfirm) {
                     return;
                 }
 
@@ -1047,7 +1008,7 @@
                 resetBtn.textContent = '⏳ Resetting...';
 
                 try {
-                    const response = await fetch('reset-history', {
+                    const response = await fetch(`${API_BASE_URL}/api/reset-history`, {
                         method: 'POST'
                     });
 
@@ -1167,7 +1128,7 @@
                 const response = await fetch(url);
                 
                 if (!response.ok) {
-                    throw new Error('API server not available');
+                    throw new Error('Guild API request failed');
                 }
                 
                 data = await response.json();

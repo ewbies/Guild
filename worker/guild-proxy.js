@@ -11,6 +11,38 @@ export default {
 
     const url = new URL(request.url);
 
+    if (url.pathname === '/api/reset-history') {
+      if (request.method !== 'POST') {
+        return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+          status: 405,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      if (!env.GUILD_HISTORY) {
+        return new Response(JSON.stringify({ error: 'History store unavailable' }), {
+          status: 501,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      try {
+        await env.GUILD_HISTORY.delete(HISTORY_KV_KEY);
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({
+          error: 'Failed to reset history',
+          details: error instanceof Error ? error.message : String(error)
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     if (url.pathname.startsWith('/api/guild/')) {
       const guildId = url.pathname.split('/').pop();
 
