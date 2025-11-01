@@ -26,7 +26,7 @@
         .header { 
             background: #1A0033;
             color: #7B68EE;
-            padding: 30px;
+            padding: 80px 30px 30px 30px;
             text-align: center;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             position: relative;
@@ -48,7 +48,6 @@
         .export-button {
             position: absolute;
             top: 20px;
-            right: 20px;
             background: #4B0082;
             border: 2px solid #6A5ACD;
             color: white;
@@ -395,10 +394,10 @@
 <body>
     <div class="container">
         <div class="header">
-            <button id="contributions-btn" class="export-button" style="display: none; position: absolute; top: 20px; left: 20px;" onclick="window.location.href='contributions.html'">Contributions</button>
+            <button id="contributions-btn" class="export-button" style="display: none; left: 20px;" onclick="window.location.href='contributions.html'">Contributions</button>
             <h1>Ewbies</h1>
             <div class="subtitle">Guild Members</div>
-            <div style="position: absolute; top: 20px; right: 20px; display: flex; gap: 10px;">
+            <div style="position: absolute; top: 20px; right: 20px; display: flex; gap: 10px; align-items: center;">
                 <button id="toggle-abbrev-btn" class="export-button" style="display: none; position: static;">Show Full Values</button>
                 <button id="export-html-btn" class="export-button" style="display: none; position: static;">Export HTML</button>
                 <button id="export-pdf-btn" class="export-button" style="display: none; position: static;">Export PDF</button>
