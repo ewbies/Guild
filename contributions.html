@@ -1274,8 +1274,12 @@
                         const shardPerHour = shardSummary?.perHour ?? null;
                         const shardDisplayPerHour = Number.isFinite(shardPerHour) ? shardPerHour : null;
 
-                        if (shardDisplayPerHour !== null) {
-                            collectivePerHourTotals[resourceIdStr] = (collectivePerHourTotals[resourceIdStr] || 0) + shardDisplayPerHour;
+                        // Shards have history if there are shard events (shardPerHour is not null)
+                        if (shardPerHour !== null) {
+                            hasAnyHistory[resourceIdStr] = true;
+                            if (shardDisplayPerHour !== null) {
+                                collectivePerHourTotals[resourceIdStr] = (collectivePerHourTotals[resourceIdStr] || 0) + shardDisplayPerHour;
+                            }
                         }
 
                         let shardExtraText = '';
@@ -1345,16 +1349,17 @@
                         displayPerHour = memberRateCache[resourceIdStr];
                     }
 
-                    if (displayPerHour !== null && displayPerHour !== undefined && !Number.isNaN(displayPerHour)) {
-                        collectivePerHourTotals[resourceIdStr] = (collectivePerHourTotals[resourceIdStr] || 0) + displayPerHour;
-                    }
-
                     // Only show rate if we have actual history, not just cached data
                     const hasActualHistory = hasHistory && hadResourcePreviously;
                     
                     // Track if this resource has any actual history across all members
                     if (hasActualHistory) {
                         hasAnyHistory[resourceIdStr] = true;
+                        
+                        // Only add to aggregate if we have actual history
+                        if (displayPerHour !== null && displayPerHour !== undefined && !Number.isNaN(displayPerHour)) {
+                            collectivePerHourTotals[resourceIdStr] = (collectivePerHourTotals[resourceIdStr] || 0) + displayPerHour;
+                        }
                     }
                     
                     resourceStats[resourceIdStr] = {
