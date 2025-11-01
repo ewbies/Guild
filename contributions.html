@@ -1346,12 +1346,15 @@
                         collectivePerHourTotals[resourceIdStr] = (collectivePerHourTotals[resourceIdStr] || 0) + displayPerHour;
                     }
 
+                    // Only show rate if we have actual history, not just cached data
+                    const hasActualHistory = hasHistory && hadResourcePreviously;
+                    
                     resourceStats[resourceIdStr] = {
                         currentValue,
                         perHour,
                         displayPerHour,
-                        rateText: perHour === null
-                            ? '--- (no history)'
+                        rateText: !hasActualHistory
+                            ? '--- (no history yet)'
                             : formatNumber(displayPerHour ?? 0, showFullValues) + '/hr',
                         extraText: ''
                     };
