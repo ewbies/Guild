@@ -660,7 +660,11 @@
             }
 
             const effectiveStart = Math.max(earliestIncluded, cutoff);
-            const durationMs = Math.max(nowMs - effectiveStart, 1);
+            // Use actual duration, but with a minimum of 1 hour to avoid inflated rates
+            // when events are concentrated in a very short time period
+            const actualDurationMs = Math.max(nowMs - effectiveStart, 1);
+            const minDurationMs = 60 * 60 * 1000; // 1 hour minimum
+            const durationMs = Math.max(actualDurationMs, minDurationMs);
             const durationHours = durationMs / 3_600_000;
 
             if (!Number.isFinite(durationHours) || durationHours <= 0) {
