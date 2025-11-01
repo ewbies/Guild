@@ -1,5 +1,6 @@
 const HISTORY_KV_KEY = 'guild-history';
 const SHARD_RESOURCE_ID = '2';
+const MIN_SAVE_INTERVAL_MS = 120000; // Only save at most once per 2 minutes
 
 export default {
   async fetch(request, env, ctx) {
@@ -82,12 +83,14 @@ export default {
         const nowIso = new Date().toISOString();
 
         const previousHistory = await loadHistory(env);
-        const potionHistory = buildPotionHistory(previousHistory, data);
-        const contributionHistory = buildContributionHistory(previousHistory, data);
-
         const updatedHistory = applyUpdates(previousHistory, data, nowIso);
-        // Only save if data actually changed to reduce KV writes
-        if (hasHistoryChanged(previousHistory, updatedHistory)) {
+        
+        // Build history from the updated history so users see the latest changes
+        const potionHistory = buildPotionHistory(updatedHistory, data);
+        const contributionHistory = buildContributionHistory(updatedHistory, data);
+        
+        // Only save if data actually changed AND enough time has passed since last save
+        if (hasHistoryChanged(previousHistory, updatedHistory) && shouldSave(previousHistory)) {
           ctx.waitUntil(saveHistory(env, updatedHistory));
         }
 
@@ -445,5 +448,20 @@ function hasHistoryChanged(previous, updated) {
   
   // Quick JSON comparison (most reliable)
   return JSON.stringify(prevCompare) !== JSON.stringify(updatedCompare);
+}
+
+function shouldSave(history) {
+  // If no previous history, always save
+  if (!history || !history.last_update) {
+    return true;
+  }
+
+  // Check if enough time has passed since last save
+  const lastUpdateTime = new Date(history.last_update).getTime();
+  const now = Date.now();
+  const timeSinceLastSave = now - lastUpdateTime;
+
+  // Only save if at least MIN_SAVE_INTERVAL_MS has passed
+  return timeSinceLastSave >= MIN_SAVE_INTERVAL_MS;
 }
 
