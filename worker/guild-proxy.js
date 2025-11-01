@@ -86,9 +86,23 @@ export default {
         
         // Apply updates first (this calculates rates), then build contribution history with the updated rates
         const updatedHistory = applyUpdates(previousHistory, data, nowIso);
+        console.log(`[DEBUG] Updated history smoothed_rates keys:`, Object.keys(updatedHistory.smoothed_rates || {}));
         const contributionHistory = buildContributionHistory(updatedHistory, data);
+        console.log(`[DEBUG] Contribution history smoothed_rates keys:`, Object.keys(contributionHistory.smoothed_rates || {}));
         
-        ctx.waitUntil(saveHistory(env, updatedHistory));
+        // Only save history if data has actually changed (to reduce KV writes and avoid hitting limits)
+        // Check if members or guild funds have changed
+        const dataChanged = hasDataChanged(previousHistory, data);
+        if (dataChanged) {
+          console.log(`[DEBUG] Data changed, saving history`);
+          // Try to save history, but don't fail if KV limit is exceeded
+          ctx.waitUntil(saveHistory(env, updatedHistory).catch(error => {
+            console.error(`[ERROR] Failed to save history:`, error.message);
+            // Don't throw - allow the request to complete even if save fails
+          }));
+        } else {
+          console.log(`[DEBUG] No data changes, skipping KV save`);
+        }
 
         data.potion_history = potionHistory;
         data.contribution_history = contributionHistory;
@@ -155,7 +169,14 @@ async function saveHistory(env, history) {
     return;
   }
 
-  await env.GUILD_HISTORY.put(HISTORY_KV_KEY, JSON.stringify(history));
+  try {
+    await env.GUILD_HISTORY.put(HISTORY_KV_KEY, JSON.stringify(history));
+    console.log(`[DEBUG] History saved successfully`);
+  } catch (error) {
+    // Log but don't throw - KV limits might be exceeded
+    console.error(`[ERROR] KV save failed:`, error.message);
+    throw error; // Re-throw so caller can handle
+  }
 }
 
 function createEmptyHistory() {
@@ -374,6 +395,46 @@ function updateContributionHistory(history, currentData, nowIso) {
   }
 }
 
+function hasDataChanged(previousHistory, currentData) {
+  // Check if any member contributions changed
+  if (!previousHistory?.members || !currentData?.Members) {
+    return true; // New data, consider it changed
+  }
+  
+  for (const [memberId, member] of Object.entries(currentData.Members)) {
+    const memberIdStr = String(memberId);
+    const prevMember = previousHistory.members[memberIdStr];
+    
+    if (!prevMember) {
+      return true; // New member
+    }
+    
+    const prevContributions = prevMember.Contributions || {};
+    const currContributions = member.Contributions || {};
+    
+    // Check if any contribution values changed
+    const allResourceIds = new Set([
+      ...Object.keys(prevContributions),
+      ...Object.keys(currContributions)
+    ]);
+    
+    for (const resourceId of allResourceIds) {
+      const prevValue = getNumber(prevContributions[resourceId]);
+      const currValue = getNumber(currContributions[resourceId]);
+      if (Math.abs(currValue - prevValue) > 0.01) {
+        return true; // Contribution changed
+      }
+    }
+  }
+  
+  // Check if guild funds changed
+  if (hasFundsChanged(previousHistory.guild_funds, currentData.Funds)) {
+    return true;
+  }
+  
+  return false; // No changes detected
+}
+
 function hasFundsChanged(previousFunds, currentFunds) {
   if (!previousFunds) {
     return true;
@@ -501,21 +562,26 @@ function calculateAndStoreRates(history, currentData, nowIso) {
     
     if (!historyMember || !historyMember.last_update) {
       // No history, can't calculate rates yet (expected on first request after reset)
+      console.log(`[DEBUG] Member ${memberIdStr}: No history or last_update`);
       continue;
     }
 
     const previousTime = new Date(historyMember.last_update);
     // Check if date parsing succeeded
     if (isNaN(previousTime.getTime())) {
+      console.log(`[DEBUG] Member ${memberIdStr}: Invalid last_update date`);
       continue;
     }
     
     const diffMs = now.getTime() - previousTime.getTime();
     const minutesElapsed = diffMs / (1000 * 60);
     
+    console.log(`[DEBUG] Member ${memberIdStr}: minutesElapsed=${minutesElapsed}, last_update=${historyMember.last_update}`);
+    
     // Need at least some time elapsed (even a few seconds is fine for calculation)
     // Allow very small intervals (like a few seconds) for rate calculation
     if (minutesElapsed <= 0 || !Number.isFinite(minutesElapsed)) {
+      console.log(`[DEBUG] Member ${memberIdStr}: Skipping - invalid minutesElapsed`);
       continue;
     }
 
@@ -555,6 +621,8 @@ function calculateAndStoreRates(history, currentData, nowIso) {
         const perMinute = calculatePerMinute(currentValue, previousValue, minutesElapsed);
         const perHour = calculatePerHourFromPerMinute(perMinute);
         
+        console.log(`[DEBUG] Member ${memberIdStr}, Resource ${resourceId}: current=${currentValue}, previous=${previousValue}, perHour=${perHour}`);
+        
         // Always store a rate if we can calculate one (even if 0), so we have data to show
         if (perHour !== null && !Number.isNaN(perHour)) {
           // If calculated rate is 0 but we have a cached non-zero rate, preserve the cache
@@ -577,15 +645,8 @@ function calculateAndStoreRates(history, currentData, nowIso) {
         // If perHour is null/NaN and no cache exists, leave it undefined (will show "no history")
       } else if (Object.prototype.hasOwnProperty.call(currentContributions, resourceId)) {
         // Resource exists in current but not previous - this happens on first time seeing this resource
-        // Even if value is 0, if it's a new resource we've never seen, wait for next update
-        // But preserve cached rate if it exists
-        if (previousCachedRate !== undefined) {
-          memberRates[resourceId] = previousCachedRate;
-        }
-      } else if (currentValue > 0) {
-        // Resource exists in current but not previous - this happens on first time seeing this resource
         // Don't calculate a rate yet, wait for next update to establish baseline
-        // But if there's a cached rate, preserve it
+        // But preserve cached rate if it exists
         if (previousCachedRate !== undefined) {
           memberRates[resourceId] = previousCachedRate;
         }
