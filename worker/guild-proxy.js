@@ -284,13 +284,13 @@ function updateContributionHistory(history, currentData, nowIso) {
 
   if (currentData?.Funds) {
     const fundsChanged = hasFundsChanged(history.guild_funds, currentData.Funds);
-    // Only record guild shard events if we have valid previous data (not empty after reset)
-    const hasValidGuildFunds = history.guild_funds && Object.keys(history.guild_funds).length > 0;
-    if (hasValidGuildFunds && fundsChanged) {
+    if (history.guild_funds && fundsChanged) {
       const prevShards = getResourceValue(history.guild_funds, SHARD_RESOURCE_ID);
       const currShards = getResourceValue(currentData.Funds, SHARD_RESOURCE_ID);
       const diff = currShards - prevShards;
-      if (diff > 0.01) {
+      // Only record guild shard events if we had shards in previous snapshot
+      // If prevShards is 0, we're establishing baseline after reset and diff would be total
+      if (prevShards > 0 && diff > 0.01) {
         history.guild_shard_events.push({
           timestamp: nowIso,
           amount: diff
@@ -330,11 +330,11 @@ function updateContributionHistory(history, currentData, nowIso) {
     const currShards = getResourceValue(currentContributions, SHARD_RESOURCE_ID);
     const shardDiff = currShards - prevShards;
 
-    // Only record shard events if we have valid previous data
-    // After reset, prevShards will be 0 even if member had shards before
-    // So we check if previousContributions has any data (means we've seen them before with data)
-    // OR if prevShards > 0 (they had shards in previous snapshot)
-    const hasValidPreviousData = (previousContributions && Object.keys(previousContributions).length > 0) || prevShards > 0;
+    // Only record shard events if the member had shards in a previous snapshot
+    // If prevShards is 0, we're establishing baseline (either new member or after reset)
+    // and the diff would be the total, not a real drop - so we don't record it
+    // Once prevShards > 0, we know we have a baseline and can track actual changes
+    const hasValidPreviousData = prevShards > 0;
 
     if (!isNewMember && hasValidPreviousData && shardDiff > 0.01) {
       const events = (memberShardEvents[memberIdStr] = memberShardEvents[memberIdStr] || []);
