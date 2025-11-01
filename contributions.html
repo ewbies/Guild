@@ -492,6 +492,7 @@
         };
         let lastFetchTimestamp = null;
         let collectivePerHourTotals = {};
+        let hasAnyHistory = {}; // Track if any member has actual history for each resource
         let guildShardEvents = [];
         let memberShardEvents = {};
         // Fixed refresh interval: 15 seconds
@@ -1166,6 +1167,7 @@
                 const currentTotal = currentGuildFunds[resourceIdStr] || 0;
                 const aggregatePerHour = collectivePerHourTotals[resourceIdStr];
                 const hasAggregate = aggregatePerHour !== undefined && aggregatePerHour !== null && !Number.isNaN(aggregatePerHour);
+                const hasActualHistoryForResource = hasAnyHistory[resourceIdStr] === true;
                 const isShard = resourceIdStr === SHARD_RESOURCE_ID;
                 let shardRangeText = '';
                 if (isShard && guildShardSummary && Number.isFinite(guildShardSummary.min) && Number.isFinite(guildShardSummary.max)) {
@@ -1175,7 +1177,7 @@
                         ? `Drop: ${minText}`
                         : `Range: ${minText} - ${maxText}`;
                 }
-                const perHourText = hasAggregate
+                const perHourText = (hasAggregate && hasActualHistoryForResource)
                     ? `${formatNumber(aggregatePerHour, showFullValues)}/hour${isShard ? ` (last ${SHARD_RATE_WINDOW_HOURS}h)` : ''}`
                     : (isShard ? '--- (no shard drops yet)' : '--- (no history yet)');
                 
@@ -1252,6 +1254,7 @@
             });
             
             collectivePerHourTotals = {};
+            hasAnyHistory = {}; // Reset tracking for this render cycle
 
             const renderNowMs = Date.now();
             const allMembers = Object.values(currentMembers);
@@ -1348,6 +1351,11 @@
 
                     // Only show rate if we have actual history, not just cached data
                     const hasActualHistory = hasHistory && hadResourcePreviously;
+                    
+                    // Track if this resource has any actual history across all members
+                    if (hasActualHistory) {
+                        hasAnyHistory[resourceIdStr] = true;
+                    }
                     
                     resourceStats[resourceIdStr] = {
                         currentValue,
