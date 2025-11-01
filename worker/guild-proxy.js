@@ -163,7 +163,8 @@ function createEmptyHistory() {
     guild_funds: {},
     guild_funds_timestamp: null,
     member_shard_events: {},
-    guild_shard_events: []
+    guild_shard_events: [],
+    smoothed_rates: {} // Store smoothed per-hour rates per member per resource
   };
 }
 
@@ -205,6 +206,11 @@ function buildContributionHistory(history, currentData) {
     result.member_shard_events = clone(history.member_shard_events);
   }
 
+  // Include smoothed rates in response
+  if (history.smoothed_rates) {
+    result.smoothed_rates = clone(history.smoothed_rates);
+  }
+
   if (!history.members || !currentData?.Members) {
     return result;
   }
@@ -226,6 +232,7 @@ function applyUpdates(previousHistory, currentData, nowIso) {
   const history = deepCloneHistory(previousHistory);
   updatePotionHistory(history, currentData, nowIso);
   updateContributionHistory(history, currentData, nowIso);
+  calculateAndStoreRates(history, currentData, nowIso);
   history.last_update = nowIso;
   return history;
 }
@@ -422,5 +429,132 @@ function deepCloneHistory(history) {
   }
 
   return JSON.parse(JSON.stringify(history));
+}
+
+// Calculate per-minute rate from contribution change
+function calculatePerMinute(currentValue, previousValue, minutesElapsed) {
+  if (minutesElapsed <= 0) return null;
+  const diff = currentValue - previousValue;
+  return diff / minutesElapsed;
+}
+
+// Convert per-minute to per-hour
+function calculatePerHourFromPerMinute(perMinute) {
+  if (perMinute === null) return null;
+  return perMinute * 60;
+}
+
+// Smooth per-hour rates using exponential moving average (EMA)
+// Alpha controls smoothing: lower = more smooth (slower response), higher = less smooth (faster response)
+// Use adaptive alpha based on time window to handle short intervals better
+function smoothPerHourRate(newRate, previousRate, minutesElapsed) {
+  if (newRate === null || newRate === undefined || Number.isNaN(newRate)) {
+    return previousRate;
+  }
+  
+  if (previousRate === null || previousRate === undefined || Number.isNaN(previousRate)) {
+    return newRate;
+  }
+  
+  // Adaptive alpha: use lower weight for very short intervals to reduce volatility
+  // For intervals < 5 minutes, use stronger smoothing (lower alpha)
+  // For longer intervals, use less smoothing (higher alpha) to respond faster
+  let alpha;
+  if (minutesElapsed < 5) {
+    // Very short intervals: strong smoothing (alpha = 0.15)
+    alpha = 0.15;
+  } else if (minutesElapsed < 15) {
+    // Short intervals: moderate smoothing (alpha = 0.25)
+    alpha = 0.25;
+  } else if (minutesElapsed < 60) {
+    // Medium intervals: light smoothing (alpha = 0.4)
+    alpha = 0.4;
+  } else {
+    // Long intervals: minimal smoothing (alpha = 0.6) to respond quickly
+    alpha = 0.6;
+  }
+  
+  // Exponential moving average: new_smooth = alpha * new + (1 - alpha) * previous
+  return alpha * newRate + (1 - alpha) * previousRate;
+}
+
+// Calculate and store smoothed rates for all members and resources
+function calculateAndStoreRates(history, currentData, nowIso) {
+  if (!currentData?.Members || !history.members) {
+    return;
+  }
+
+  const smoothedRates = (history.smoothed_rates = history.smoothed_rates || {});
+  const now = new Date(nowIso);
+
+  for (const [memberId, member] of Object.entries(currentData.Members)) {
+    const memberIdStr = String(memberId);
+    const historyMember = history.members[memberIdStr];
+    
+    if (!historyMember || !historyMember.last_update) {
+      // No history, can't calculate rates yet
+      continue;
+    }
+
+    const previousTime = new Date(historyMember.last_update);
+    const diffMs = now - previousTime;
+    const minutesElapsed = diffMs / (1000 * 60);
+    
+    if (minutesElapsed <= 0) {
+      continue;
+    }
+
+    const currentContributions = member.Contributions || {};
+    const previousContributions = historyMember.Contributions || {};
+    
+    // Ensure member entry exists in smoothed_rates
+    if (!smoothedRates[memberIdStr]) {
+      smoothedRates[memberIdStr] = {};
+    }
+    
+    const memberRates = smoothedRates[memberIdStr];
+    
+    // Calculate rates for all resources that exist in either current or previous
+    const allResourceIds = new Set([
+      ...Object.keys(currentContributions),
+      ...Object.keys(previousContributions)
+    ]);
+    
+    for (const resourceId of allResourceIds) {
+      // Skip shards - they're handled separately with rolling windows
+      if (resourceId === SHARD_RESOURCE_ID) {
+        continue;
+      }
+      
+      const currentValue = getNumber(currentContributions[resourceId]);
+      const previousValue = getNumber(previousContributions[resourceId]);
+      
+      // Only calculate if we have a previous value (established baseline)
+      if (previousValue !== undefined && Object.prototype.hasOwnProperty.call(previousContributions, resourceId)) {
+        const perMinute = calculatePerMinute(currentValue, previousValue, minutesElapsed);
+        const perHour = calculatePerHourFromPerMinute(perMinute);
+        
+        if (perHour !== null && !Number.isNaN(perHour)) {
+          const previousCachedRate = memberRates[resourceId];
+          
+          // If calculated rate is 0 but we have a cached non-zero rate, preserve the cache
+          if (perHour === 0 && previousCachedRate !== undefined && previousCachedRate !== 0 && !Number.isNaN(previousCachedRate)) {
+            memberRates[resourceId] = previousCachedRate;
+          } else {
+            // Apply exponential moving average smoothing
+            if (previousCachedRate !== undefined && previousCachedRate !== null && !Number.isNaN(previousCachedRate)) {
+              memberRates[resourceId] = smoothPerHourRate(perHour, previousCachedRate, minutesElapsed);
+            } else {
+              // First calculation - use the raw rate
+              memberRates[resourceId] = perHour;
+            }
+          }
+        } else if (previousCachedRate !== undefined) {
+          // Preserve cached rate if calculation failed
+          memberRates[resourceId] = previousCachedRate;
+        }
+      }
+    }
+  }
 }
 
