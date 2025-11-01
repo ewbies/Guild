@@ -317,34 +317,6 @@
             align-items: center;
         }
         
-        .refresh-rate-label {
-            color: #FFFFFF;
-            font-size: 0.9em;
-            margin-right: 5px;
-        }
-        
-        .refresh-rate-select {
-            background: #1A0033;
-            border: 2px solid #4B0082;
-            color: #FFFFFF;
-            padding: 8px 12px;
-            font-size: 0.9em;
-            cursor: pointer;
-            border-radius: 4px;
-            transition: all 0.3s ease;
-        }
-        
-        .refresh-rate-select:hover {
-            border-color: #6A5ACD;
-            background: #2C004D;
-        }
-        
-        .refresh-rate-select:focus {
-            outline: none;
-            border-color: #7B68EE;
-            box-shadow: 0 0 10px rgba(123, 104, 238, 0.3);
-        }
-        
         .export-button {
             background: #4B0082;
             border: 2px solid #6A5ACD;
@@ -445,21 +417,10 @@
                 <div class="status-bar">
                     <div class="status-indicator">
                         <span class="refresh-dot" id="refresh-dot"></span>
-                        <span class="status-text" id="status-text">Auto-refresh: Active (updates every 1 minute)</span>
+                        <span class="status-text" id="status-text">Auto-refresh: Active (updates every 15 seconds)</span>
                         <span class="status-text" id="last-update">Last update: Just now</span>
                     </div>
                     <div class="button-group">
-                        <label for="refresh-rate-select" class="refresh-rate-label">Refresh Rate:</label>
-                        <select id="refresh-rate-select" class="refresh-rate-select">
-                            <option value="5000">5 seconds</option>
-                            <option value="10000">10 seconds</option>
-                            <option value="15000">15 seconds</option>
-                            <option value="30000">30 seconds</option>
-                            <option value="60000" selected>1 minute</option>
-                            <option value="120000">2 minutes</option>
-                            <option value="300000">5 minutes</option>
-                        </select>
-                        <button id="toggle-refresh-btn" class="toggle-button" style="margin-bottom: 0;">⏸️ Pause Auto-Refresh</button>
                         <button id="toggle-full-btn" class="toggle-button" style="margin-bottom: 0;">📊 Show Full Values</button>
                         <button id="manual-refresh-btn" class="toggle-button" style="margin-bottom: 0;">🔄 Refresh Now</button>
                         <button id="reset-data-btn" class="toggle-button" style="margin-bottom: 0;">♻️ Reset Data</button>
@@ -469,7 +430,12 @@
                 <div class="info-text">
                     <strong>Note:</strong> Per-hour rates are calculated from per-minute rates (change per minute × 60). 
                     Rates are based on the difference between current and previous contribution totals divided by time elapsed in minutes. 
-                    On first load, rates will show "---" until we have at least 2 data points. Auto-refresh updates the page every 1 minute when values change.
+                    On first load, rates will show "---" until we have at least 2 data points. 
+                    If no change is detected on refresh, the last calculated rate is preserved to avoid showing 0/hr. 
+                    Auto-refresh updates the page every 15 seconds to show the latest contribution data. 
+                    Elemental shard rates use a rolling 6-hour window based on individual drop events (not total values). 
+                    Shard rates have a minimum 1-hour duration to prevent inflated rates from short activity bursts. 
+                    Collective shard rates sum all individual member rates, not guild fund changes.
                 </div>
                 
                 <div class="section">
@@ -518,7 +484,6 @@
         let currentSort = { type: 'name', direction: 'asc', resourceId: null };
         let allResourceIds = [];
         let autoRefreshInterval = null;
-        let autoRefreshEnabled = true;
         let clientHistory = {
             guildFunds: {},
             members: {}
@@ -527,8 +492,8 @@
         let collectivePerHourTotals = {};
         let guildShardEvents = [];
         let memberShardEvents = {};
-        // Load refresh interval from localStorage or default to 1 minute
-        let refreshIntervalMs = parseInt(localStorage.getItem('refreshIntervalMs') || '60000', 10);
+        // Fixed refresh interval: 15 seconds
+        const refreshIntervalMs = 15000;
 
         const GUILD_ID = 4;
         const API_BASE_URL = 'https://ewbies-guild-api.widers.workers.dev';
@@ -888,8 +853,8 @@
             // Set up search
             setupSearch();
             
-            // Set up auto-refresh
-            setupAutoRefresh();
+            // Start auto-refresh
+            startAutoRefresh();
             
             // Set up manual refresh
             setupManualRefresh();
@@ -941,39 +906,6 @@
             });
         }
         
-        function setupAutoRefresh() {
-            const toggleRefreshBtn = document.getElementById('toggle-refresh-btn');
-            const refreshRateSelect = document.getElementById('refresh-rate-select');
-            
-            // Set the selected value based on current interval
-            refreshRateSelect.value = refreshIntervalMs.toString();
-            
-            // Update refresh rate when changed
-            refreshRateSelect.addEventListener('change', (e) => {
-                const newInterval = parseInt(e.target.value, 10);
-                refreshIntervalMs = newInterval;
-                localStorage.setItem('refreshIntervalMs', newInterval.toString());
-                
-                // Restart auto-refresh with new interval if it's currently active
-                if (autoRefreshEnabled) {
-                    stopAutoRefresh();
-                    startAutoRefresh();
-                } else {
-                    // Just update the status text
-                    updateRefreshStatus(false);
-                }
-            });
-            
-            toggleRefreshBtn.addEventListener('click', () => {
-                if (autoRefreshEnabled) {
-                    stopAutoRefresh();
-                    toggleRefreshBtn.textContent = '▶️ Resume Auto-Refresh';
-                } else {
-                    startAutoRefresh();
-                    toggleRefreshBtn.textContent = '⏸️ Pause Auto-Refresh';
-                }
-            });
-        }
         
         function setupManualRefresh() {
             const manualRefreshBtn = document.getElementById('manual-refresh-btn');
@@ -1035,41 +967,19 @@
                 clearInterval(autoRefreshInterval);
             }
             
-            autoRefreshEnabled = true;
-            updateRefreshStatus(true);
+            updateRefreshStatus();
             
             autoRefreshInterval = setInterval(() => {
                 refreshData(false);
             }, refreshIntervalMs);
         }
         
-        function stopAutoRefresh() {
-            if (autoRefreshInterval) {
-                clearInterval(autoRefreshInterval);
-                autoRefreshInterval = null;
-            }
-            
-            autoRefreshEnabled = false;
-            updateRefreshStatus(false);
-        }
-        
-        function updateRefreshStatus(isActive) {
+        function updateRefreshStatus() {
             const dot = document.getElementById('refresh-dot');
             const statusText = document.getElementById('status-text');
             
-            if (isActive) {
-                dot.classList.remove('inactive');
-                const minutes = refreshIntervalMs / 60000;
-                const seconds = refreshIntervalMs / 1000;
-                if (minutes >= 1) {
-                    statusText.textContent = `Auto-refresh: Active (updates every ${minutes} minute${minutes !== 1 ? 's' : ''})`;
-                } else {
-                    statusText.textContent = `Auto-refresh: Active (updates every ${seconds} second${seconds !== 1 ? 's' : ''})`;
-                }
-            } else {
-                dot.classList.add('inactive');
-                statusText.textContent = 'Auto-refresh: Paused';
-            }
+            dot.classList.remove('inactive');
+            statusText.textContent = 'Auto-refresh: Active (updates every 15 seconds)';
         }
         
         function updateLastUpdateTime() {
