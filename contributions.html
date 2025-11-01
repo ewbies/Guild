@@ -1319,10 +1319,19 @@
 
                     const previousHistory = contributionHistory[member.ID];
                     const previousValue = (previousHistory && previousHistory.Contributions && previousHistory.Contributions[resourceIdStr]) || 0;
-                    const hasHistory = !!previousHistory && !!previousHistory.last_update;
-                    const hadResourcePreviously = !!previousHistory
-                        && !!previousHistory.Contributions
-                        && Object.prototype.hasOwnProperty.call(previousHistory.Contributions, resourceIdStr);
+                    // Has history only if previousHistory exists AND has a valid last_update timestamp
+                    // CRITICAL: Also check that Contributions actually exists and is not empty
+                    // Empty objects or fallback last_update values should not count as having history
+                    const hasValidContributions = previousHistory && previousHistory.Contributions && typeof previousHistory.Contributions === 'object' && Object.keys(previousHistory.Contributions).length > 0;
+                    const hasHistory = !!previousHistory 
+                        && !!previousHistory.last_update 
+                        && previousHistory.last_update !== null 
+                        && previousHistory.last_update !== ''
+                        && hasValidContributions;
+                    // Had resource previously only if Contributions exists and actually has the resource ID as a key with a defined value
+                    const hadResourcePreviously = hasValidContributions
+                        && Object.prototype.hasOwnProperty.call(previousHistory.Contributions, resourceIdStr)
+                        && previousHistory.Contributions[resourceIdStr] !== undefined;
 
                     let perMinute = null;
                     if (hasHistory && hadResourcePreviously) {
